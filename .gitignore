@@ -1,0 +1,23 @@
+# Dependências
+node_modules/
+
+# Builds e Distribuição
+dist/
+release/
+*.exe
+*.msi
+
+# Logs e Debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+download-debug.log
+
+# Pasta do Mobile (Deve ser gerenciada pelo seu próprio repositório)
+mobile/
+
+# Outros
+.DS_Store
+.env
+scratch/

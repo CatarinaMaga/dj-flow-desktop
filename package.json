@@ -1,0 +1,45 @@
+{
+  "name": "dj-flow-desktop",
+  "version": "1.0.0",
+  "description": "DJ Flow - O braço direito do DJ para Rekordbox. Baixe áudios para o seu cofre instantaneamente.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "dist": "npm run build"
+  },
+  "author": "DJ Flow Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "youtube-dl-exec": "^3.0.2"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.djflow.desktop",
+    "productName": "DJ Flow Setup",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "css/**/*",
+      "js/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ]
+  }
+}

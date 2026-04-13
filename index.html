@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Flow - Satellite</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="satellite-body">
+    
+    <header class="app-header satellite-header">
+        <div class="logo">DJ <span>FLOW</span></div>
+        <div class="status-bar" style="font-size: 0.65rem; color: #888; text-transform: uppercase;">
+            Rekordbox Bridge
+        </div>
+    </header>
+
+    <main class="satellite-main">
+        <!-- ÁREA DE COLETA -->
+        <div class="input-container">
+            <h3 class="input-label">Link do Vídeo (YouTube):</h3>
+            <div class="input-wrapper">
+                <input type="text" id="yt-link-input" placeholder="Cole a URL aqui..." autocomplete="off">
+            </div>
+            
+            <!-- TRACK PREVIEW (Hidden by default) -->
+            <div id="track-preview" class="track-preview" style="display: none;">
+                <div class="preview-thumb" id="preview-thumb"></div>
+                <div class="preview-info">
+                    <div id="preview-title" class="preview-title">Título do vídeo</div>
+                    <div id="preview-duration" class="preview-duration">04:20</div>
+                </div>
+            </div>
+
+            <button id="btn-download" class="btn-primary" disabled>
+                <span class="icon">⬇</span> Baixar para o Cofre
+            </button>
+            <button id="btn-folder" class="btn-secondary">
+                📁 Abrir Pasta do Cofre
+            </button>
+        </div>
+
+        <!-- LOG STATUS -->
+        <div class="log-container">
+            <div class="log-header">
+                <h3>Registro de Atividade</h3>
+                <span class="log-dot"></span>
+            </div>
+            <ul id="download-log">
+                <li class="empty-log">Aguardando entrada de link...</li>
+            </ul>
+        </div>
+        
+        <!-- DICA DE INTEGRAÇÃO REKORDBOX -->
+        <div class="helper-text">
+            <strong>Integração Auto-Import:</strong><br>
+            Aponte seu Rekordbox para escanear a pasta: <br>
+            <span style="color:var(--accent-purple)">Músicas / Cofre DJ Flow</span>
+        </div>
+    </main>
+
+    <!-- SCRIPTS ENXUTOS APENAS PARA PONTE WEB -->
+    <script src="js/app.js"></script>
+</body>
+</html>
