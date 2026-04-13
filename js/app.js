@@ -46,7 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog(`🔍 Analisando link...`, 'var(--accent-cyan)');
         
         try {
-            const res = await fetch(`http://localhost:3000/info/youtube?url=${encodeURIComponent(url)}`);
+            const res = await fetch(`http://localhost:3891/info/youtube?url=${encodeURIComponent(url)}`);
+            
+            // Verificação robusta: se o servidor retornar HTML (conflito de porta), capturamos aqui
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await res.text();
+                console.error("Resposta não-JSON recebida:", text.substring(0, 100));
+                throw new Error("O servidor local retornou um formato inesperado (HTML). Verifique se há outro programa usando a porta 3891.");
+            }
+
             const data = await res.json();
             
             if (data.error) throw new Error(data.error);
@@ -85,7 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog(`🚀 Iniciando download materializado...`, 'var(--accent-purple)');
 
         try {
-            const res = await fetch(`http://localhost:3000/download/disk?url=${encodeURIComponent(url)}`);
+            const res = await fetch(`http://localhost:3891/download/disk?url=${encodeURIComponent(url)}`);
+            
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Erro de comunicação com o motor (Porta 3891 ocupada).");
+            }
+
             const data = await res.json();
             
             if (data.error) throw new Error(data.error);
@@ -106,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnFolder.addEventListener('click', async () => {
         try {
-            await fetch(`http://localhost:3000/open-folder`);
+            await fetch(`http://localhost:3891/open-folder`);
         } catch(e) {
             console.error("Erro ao abrir pasta", e);
             addLog(`❌ Não foi possível abrir a pasta.`, 'var(--danger)');

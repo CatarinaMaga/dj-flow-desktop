@@ -6,7 +6,7 @@ const cors = require('cors');
 const youtubedl = require('youtube-dl-exec');
 
 const serverApp = express();
-const PORT = 3000;
+const PORT = 3891;
 
 serverApp.use(cors());
 serverApp.use(express.json());
@@ -121,6 +121,11 @@ serverApp.get('/open-folder', (req, res) => {
     res.json({ success: true });
 });
 
+// Catch-all para evitar retornar HTML em caso de erro de rota ou 404
+serverApp.use((req, res) => {
+    res.status(404).json({ error: 'Rota não encontrada no backend do DJ Flow.' });
+});
+
 let localServer;
 
 function createWindow () {
@@ -147,7 +152,7 @@ app.whenReady().then(() => {
       console.log(`Porta ${PORT} pronta para Download Bridge.`);
   }).on('error', (err) => {
       if(err.code === 'EADDRINUSE') {
-          console.log("Porta em uso, recuperando conexão.");
+          console.log(`A porta ${PORT} já está em uso por outro programa. Tente fechar outras instâncias.`);
       }
   });
   
