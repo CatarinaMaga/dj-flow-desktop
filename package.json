@@ -35,11 +35,19 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "index.html",
       "css/**/*",
       "js/**/*",
+      "assets/**/*",
       "package.json",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/youtube-dl-exec/bin/yt-dlp.exe",
+        "to": "app/node_modules/youtube-dl-exec/bin/yt-dlp.exe"
+      }
     ]
   }
 }

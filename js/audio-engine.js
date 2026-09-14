@@ -3,20 +3,20 @@ const AudioEngine = {
     contexts: { A: null, B: null },
     fxNodes: { A: null, B: null },
     
-    init: function() {
+    init: async function() {
         this.players = {
             A: document.getElementById('audio-player-a'),
             B: document.getElementById('audio-player-b')
         };
         
-        // Habilita Cors para que Node backend streams funcionem com Web Audio API FXs
-        if(this.players.A) this.players.A.crossOrigin = "anonymous";
-        if(this.players.B) this.players.B.crossOrigin = "anonymous";
+        // Habilita CORS para que Node backend streams funcionem com Web Audio API FXs
+        if (this.players.A) this.players.A.crossOrigin = "anonymous";
+        if (this.players.B) this.players.B.crossOrigin = "anonymous";
 
         this.setupControls();
         this.setupMixer();
         this.setupFX();
-        this.setupAudioRouting();
+        await this.setupAudioRouting();
         this.setupTimers();
     },
 
@@ -209,7 +209,7 @@ const AudioEngine = {
             const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
             
             const populate = (selectElem) => {
-                if(!selectElem) return;
+                if (!selectElem) return;
                 selectElem.innerHTML = '';
                 audioOutputs.forEach(device => {
                     const option = document.createElement('option');
@@ -223,21 +223,21 @@ const AudioEngine = {
             populate(selectB);
 
             // Ao mudar a placa de som: Aplicamos no AudioContext se já instanciou, ou no AudioPlayer simples.
-            if(selectA) {
+            if (selectA) {
                 selectA.addEventListener('change', async (e) => {
                     if (this.contexts.A && this.contexts.A.setSinkId) {
                         await this.contexts.A.setSinkId(e.target.value);
-                    } else if (this.players.A.setSinkId) {
+                    } else if (this.players.A && this.players.A.setSinkId) {
                         await this.players.A.setSinkId(e.target.value);
                     }
                 });
             }
 
-            if(selectB) {
+            if (selectB) {
                 selectB.addEventListener('change', async (e) => {
                     if (this.contexts.B && this.contexts.B.setSinkId) {
                         await this.contexts.B.setSinkId(e.target.value);
-                    } else if (this.players.B.setSinkId) {
+                    } else if (this.players.B && this.players.B.setSinkId) {
                         await this.players.B.setSinkId(e.target.value);
                     }
                 });
@@ -246,14 +246,34 @@ const AudioEngine = {
             console.warn("Roteamento de Áudio não suportado (setSinkId):", err);
         }
 
+        // Registra os listeners do modal de configurações apenas uma vez
         const btnSettings = document.getElementById('btn-settings');
         const modalSettings = document.getElementById('audio-settings-modal');
         const btnCloseSettings = document.getElementById('btn-close-settings');
 
-        if (btnSettings && modalSettings && btnCloseSettings) {
-            btnSettings.addEventListener('click', () => {
+        if (btnSettings && modalSettings && btnCloseSettings && !btnSettings._settingsListenerAdded) {
+            btnSettings._settingsListenerAdded = true;
+            btnSettings.addEventListener('click', async () => {
                 modalSettings.style.display = 'flex';
-                this.setupAudioRouting(); 
+                // Repopula os dispositivos ao abrir o modal (pode ter mudado)
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+                    [selectA, selectB].forEach(sel => {
+                        if (!sel) return;
+                        const current = sel.value;
+                        sel.innerHTML = '';
+                        audioOutputs.forEach(device => {
+                            const option = document.createElement('option');
+                            option.value = device.deviceId;
+                            option.text = device.label || `Device ${device.deviceId.substring(0, 5)}...`;
+                            if (device.deviceId === current) option.selected = true;
+                            sel.appendChild(option);
+                        });
+                    });
+                } catch (e) {
+                    console.warn('Não foi possível atualizar lista de dispositivos:', e);
+                }
             });
             btnCloseSettings.addEventListener('click', () => {
                 modalSettings.style.display = 'none';
@@ -291,5 +311,5 @@ const AudioEngine = {
 window.AudioEngine = AudioEngine;
 
 document.addEventListener('DOMContentLoaded', () => {
-    AudioEngine.init();
+    AudioEngine.init().catch(e => console.error('Erro ao inicializar AudioEngine:', e));
 });

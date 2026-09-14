@@ -37,7 +37,13 @@ const MidiController = {
     loadMappings: function() {
         const saved = localStorage.getItem('djflow_midi_mappings');
         if (saved) {
-            try { this.mappings = JSON.parse(saved); } catch(e) {}
+            try {
+                this.mappings = JSON.parse(saved);
+            } catch (e) {
+                console.warn('Falha ao carregar mapeamentos MIDI salvos, resetando:', e);
+                this.mappings = {};
+                localStorage.removeItem('djflow_midi_mappings');
+            }
         }
     },
 

@@ -8,7 +8,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="satellite-body">
-    
+
+    <!-- ==================== TELA DE ACEITE (aparece só na 1ª vez) ==================== -->
+    <div id="terms-overlay" class="terms-overlay" style="display:none;">
+        <div class="terms-card">
+            <div class="terms-logo">DJ <span>FLOW</span></div>
+            <h2 class="terms-title">Termos de Uso</h2>
+            <div class="terms-body">
+                <p>O DJ Flow é uma ferramenta de <strong>produtividade para organização de biblioteca musical</strong>.</p>
+                <p>Ao utilizar este aplicativo, você declara que:</p>
+                <ul>
+                    <li>✅ Só irá baixar conteúdo que possui <strong>direito legal de uso</strong> (comprado, licenciado, domínio público ou autorizado pelo autor).</li>
+                    <li>✅ Não usará o app para fins de pirataria ou distribuição não autorizada.</li>
+                    <li>✅ É o único responsável pelo uso que faz do conteúdo baixado.</li>
+                </ul>
+                <p class="terms-note">Este software não armazena, distribui nem reproduz conteúdo de terceiros. O download é feito localmente no seu computador.</p>
+            </div>
+            <button id="btn-accept-terms" class="btn-primary">
+                ✅ Li e Aceito os Termos
+            </button>
+            <button id="btn-reject-terms" class="btn-secondary" style="margin-top: 8px;">
+                ❌ Não Aceito — Fechar
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== APP PRINCIPAL ==================== -->
     <header class="app-header satellite-header">
         <div class="logo">DJ <span>FLOW</span></div>
         <div class="status-bar" style="font-size: 0.65rem; color: #888; text-transform: uppercase;">
@@ -19,7 +44,13 @@
     <main class="satellite-main">
         <!-- ÁREA DE COLETA -->
         <div class="input-container">
-            <h3 class="input-label">Link do Vídeo (YouTube):</h3>
+            <h3 class="input-label">Link da Faixa:</h3>
+            <div class="source-badges">
+                <span class="badge">YouTube</span>
+                <span class="badge">SoundCloud</span>
+                <span class="badge">Bandcamp</span>
+                <span class="badge">Archive.org</span>
+            </div>
             <div class="input-wrapper">
                 <input type="text" id="yt-link-input" placeholder="Cole a URL aqui..." autocomplete="off">
             </div>
@@ -38,6 +69,9 @@
             </button>
             <button id="btn-folder" class="btn-secondary">
                 📁 Abrir Pasta do Cofre
+            </button>
+            <button id="btn-update-engine" class="btn-secondary" title="Atualiza o yt-dlp caso os downloads parem de funcionar">
+                🔄 Atualizar Motor de Download
             </button>
         </div>
 
@@ -61,6 +95,10 @@
     </main>
 
     <!-- SCRIPTS ENXUTOS APENAS PARA PONTE WEB -->
+    <!-- js/audio-engine.js e js/midi-controller.js implementam um mixer de 2 decks
+         com mapeamento MIDI, mas ainda não têm HTML/CSS correspondente nesta tela.
+         Ficam fora do carregamento até essa UI ser construída, pois do jeito que
+         estavam, pediam permissão de microfone e MIDI ao Windows sem necessidade. -->
     <script src="js/app.js"></script>
 </body>
 </html>
