@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = 'http://127.0.0.1:3891';
     const API_TOKEN = window.djflow ? window.djflow.apiToken : '';
 
+    if (window.djflow && window.djflow.appVersion) {
+        document.getElementById('app-version').textContent = `v${window.djflow.appVersion}`;
+    }
+
     function apiUrl(route, params = {}) {
         const url = new URL(route, API_BASE);
         Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
@@ -234,7 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(apiUrl('/update-engine'));
             const data = await res.json();
             if (data.error) throw new Error(data.error);
-            addLog(`✅ Motor de download OK: ${data.message}`, 'var(--accent-green)');
+            const today = new Date().toLocaleDateString('pt-BR');
+            let message;
+            if (data.updated && data.versionDate) {
+                message = `✅ Motor de download atualizado para a versão de ${data.versionDate}.`;
+            } else if (data.versionDate) {
+                message = `✅ Motor de download em dia: versão de ${data.versionDate} (verificado em ${today}).`;
+            } else {
+                message = `✅ Verificação do motor de download concluída em ${today}.`;
+            }
+            addLog(message, 'var(--accent-green)');
         } catch (e) {
             addLog(`❌ ERRO ao atualizar motor: ${e.message}`, 'var(--danger)');
         } finally {

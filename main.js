@@ -229,7 +229,16 @@ function updateYtDlp() {
                 reject(new Error('Não foi possível verificar atualizações do motor de download.'));
                 return;
             }
-            resolve({ success: true, message: output.trim() || 'yt-dlp já está atualizado.' });
+            // O yt-dlp responde em inglês, ex.: "yt-dlp is up to date (stable@2026.08.19 ...)"
+            // ou "Updated yt-dlp to stable@2026.09.10 ...". A última versão citada é a instalada.
+            const versions = [...output.matchAll(/stable@(\d{4})\.(\d{2})\.(\d{2})/g)];
+            const last = versions[versions.length - 1];
+            resolve({
+                success: true,
+                upToDate: /is up to date/i.test(output),
+                updated: /Updated yt-dlp to/i.test(output),
+                versionDate: last ? `${last[3]}/${last[2]}/${last[1]}` : null
+            });
         });
     });
 }
@@ -355,6 +364,10 @@ app.on('quit', () => {
 
 ipcMain.on('get-api-token', (event) => {
   event.returnValue = API_TOKEN;
+});
+
+ipcMain.on('get-app-version', (event) => {
+  event.returnValue = app.getVersion();
 });
 
 // IPC: fechar o app quando o usuário rejeitar os termos

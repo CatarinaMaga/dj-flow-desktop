@@ -67,6 +67,19 @@ body.satellite-body {
     opacity: 0.6;
 }
 
+.app-version {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    text-transform: none;
+    color: var(--text-muted);
+}
+
+.app-version:empty {
+    display: none;
+}
+
 .logo {
     font-weight: 800;
     font-size: 1rem;

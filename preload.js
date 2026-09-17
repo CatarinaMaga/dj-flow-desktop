@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Node/Electron — só ao que expormos explicitamente aqui.
 contextBridge.exposeInMainWorld('djflow', {
     apiToken: ipcRenderer.sendSync('get-api-token'),
+    appVersion: ipcRenderer.sendSync('get-app-version'),
     quitApp: () => ipcRenderer.send('app-quit'),
     onUpdateAvailable: (callback) => {
         ipcRenderer.on('app-update-available', (_event, info) => callback(info));
