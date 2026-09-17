@@ -67,8 +67,38 @@ body.satellite-body {
     opacity: 0.6;
 }
 
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.lang-select {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-family: inherit;
+    padding: 1px 2px;
+    cursor: pointer;
+}
+
+.lang-select:hover,
+.lang-select:focus-visible {
+    color: var(--text-main);
+    border-color: #555;
+    outline: none;
+}
+
+.helper-path {
+    color: var(--accent-purple);
+}
+
 .app-version {
-    margin-left: 6px;
     padding: 1px 6px;
     border: 1px solid var(--border-color);
     border-radius: 4px;

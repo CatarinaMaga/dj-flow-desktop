@@ -23,7 +23,7 @@ serverApp.use(cors());
 serverApp.use(express.json());
 serverApp.use((req, res, next) => {
     if (req.query.token !== API_TOKEN) {
-        return res.status(401).json({ error: 'Acesso não autorizado ao backend do DJ Flow.' });
+        return res.status(401).json({ code: 'unauthorized', error: 'Acesso não autorizado ao backend do DJ Flow.' });
     }
     next();
 });
@@ -69,11 +69,11 @@ function getCleanUrl(rawUrl) {
 serverApp.get('/download/disk', async (req, res) => {
     const videoUrl = req.query.url;
     if (!videoUrl || !isSupportedUrl(videoUrl)) {
-        return res.status(400).json({ error: 'URL inválida ou fonte não suportada. Use YouTube, SoundCloud, Bandcamp ou Archive.org.' });
+        return res.status(400).json({ code: 'invalid_url', error: 'URL inválida ou fonte não suportada. Use YouTube, SoundCloud, Bandcamp ou Archive.org.' });
     }
 
     if (!cofrePath) {
-        return res.status(500).json({ error: 'Cofre ainda não foi inicializado. Aguarde um momento e tente novamente.' });
+        return res.status(500).json({ code: 'vault_not_ready', error: 'Cofre ainda não foi inicializado. Aguarde um momento e tente novamente.' });
     }
     
     const cleanVideoUrl = getCleanUrl(videoUrl);
@@ -107,7 +107,7 @@ serverApp.get('/download/disk', async (req, res) => {
         console.error('Erro no download:', err);
         const logPath = path.join(app.getPath('userData'), 'download-debug.log');
         fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERRO: ${err.message}\n`);
-        res.status(500).json({ error: err.message || 'Falha durante o download.' });
+        res.status(500).json({ code: 'download_failed', error: err.message || 'Falha durante o download.' });
     }
 });
 
@@ -115,7 +115,7 @@ serverApp.get('/download/disk', async (req, res) => {
 serverApp.get('/info/youtube', async (req, res) => {
     const videoUrl = req.query.url;
     if (!videoUrl || !isSupportedUrl(videoUrl)) {
-        return res.status(400).json({ error: 'URL inválida ou fonte não suportada.' });
+        return res.status(400).json({ code: 'invalid_url', error: 'URL inválida ou fonte não suportada.' });
     }
     
     const cleanVideoUrl = getCleanUrl(videoUrl);
@@ -137,20 +137,20 @@ serverApp.get('/info/youtube', async (req, res) => {
 
         res.json({
             success: true,
-            title: parsedInfo.title || 'Áudio Desconhecido',
+            title: parsedInfo.title || '',
             thumbnail: parsedInfo.thumbnail || '',
             duration: parsedInfo.duration_string || ''
         });
     } catch (err) {
         console.error('Erro ao buscar info:', err);
-        res.status(500).json({ error: 'Faixa indisponível ou link inválido.' });
+        res.status(500).json({ code: 'track_unavailable', error: 'Faixa indisponível ou link inválido.' });
     }
 });
 
 // Endpoint para ajudar o usuário a abrir a pasta visualmente no File Explorer
 serverApp.get('/open-folder', (req, res) => {
     if (!cofrePath) {
-        return res.status(500).json({ error: 'Cofre ainda não inicializado.' });
+        return res.status(500).json({ code: 'vault_not_ready', error: 'Cofre ainda não inicializado.' });
     }
     shell.openPath(cofrePath);
     res.json({ success: true });
@@ -165,7 +165,7 @@ serverApp.get('/update-engine', async (req, res) => {
         const result = await updateYtDlp();
         res.json(result);
     } catch (err) {
-        res.status(500).json({ error: err.message || 'Falha ao atualizar o motor de download.' });
+        res.status(500).json({ code: 'engine_update_failed', error: err.message || 'Falha ao atualizar o motor de download.' });
     }
 });
 
@@ -183,7 +183,7 @@ function resolveCofreAudio(name) {
 // Endpoint: listar os áudios do Cofre para o detector de qualidade
 serverApp.get('/quality/files', (req, res) => {
     if (!cofrePath) {
-        return res.status(500).json({ error: 'Cofre ainda não inicializado.' });
+        return res.status(500).json({ code: 'vault_not_ready', error: 'Cofre ainda não inicializado.' });
     }
     const files = fs.readdirSync(cofrePath, { withFileTypes: true })
         .filter(entry => entry.isFile() && AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
@@ -200,14 +200,14 @@ serverApp.get('/quality/files', (req, res) => {
 serverApp.get('/quality/file', (req, res) => {
     const fullPath = cofrePath && resolveCofreAudio(req.query.name);
     if (!fullPath) {
-        return res.status(404).json({ error: 'Arquivo não encontrado no Cofre.' });
+        return res.status(404).json({ code: 'file_not_found', error: 'Arquivo não encontrado no Cofre.' });
     }
     res.sendFile(fullPath);
 });
 
 // Catch-all para evitar retornar HTML em caso de erro de rota ou 404
 serverApp.use((req, res) => {
-    res.status(404).json({ error: 'Rota não encontrada no backend do DJ Flow.' });
+    res.status(404).json({ code: 'route_not_found', error: 'Rota não encontrada no backend do DJ Flow.' });
 });
 
 let localServer;
@@ -237,7 +237,7 @@ function updateYtDlp() {
                 success: true,
                 upToDate: /is up to date/i.test(output),
                 updated: /Updated yt-dlp to/i.test(output),
-                versionDate: last ? `${last[3]}/${last[2]}/${last[1]}` : null
+                versionDate: last ? `${last[1]}-${last[2]}-${last[3]}` : null
             });
         });
     });

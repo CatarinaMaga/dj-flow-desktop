@@ -120,30 +120,7 @@
         const claimsHighQuality = lossless || avgKbps >= 250;
         const suspicious = claimsHighQuality && cutoffHz < 17500;
 
-        const labels = {
-            'alta': 'Alta',
-            'media': 'Média',
-            'baixa': 'Baixa',
-            'muito-baixa': 'Muito baixa'
-        };
-        const advice = {
-            'alta': 'Pronta pra tocar em som grande.',
-            'media': 'Ok pra maioria dos sistemas de som.',
-            'baixa': 'Pode soar abafada em som grande.',
-            'muito-baixa': 'Evite tocar em som grande.'
-        };
-
-        return {
-            level,
-            label: labels[level],
-            advice: suspicious
-                ? `Diz ter ${lossless ? 'qualidade sem perdas' : `${Math.round(avgKbps)} kbps`}, mas foi feita a partir de um arquivo fraco.`
-                : advice[level],
-            suspicious,
-            lossless,
-            cutoffHz,
-            avgKbps
-        };
+        return { level, suspicious, lossless, cutoffHz, avgKbps };
     }
 
     async function analyzeArrayBuffer(arrayBuffer) {

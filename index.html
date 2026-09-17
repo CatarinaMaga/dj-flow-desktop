@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DJ Flow - Satellite</title>
+    <title>DJ Flow</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
@@ -13,23 +13,19 @@
     <div id="terms-overlay" class="terms-overlay" style="display:none;">
         <div class="terms-card">
             <div class="terms-logo">DJ <span>FLOW</span></div>
-            <h2 class="terms-title">Termos de Uso</h2>
+            <h2 class="terms-title" data-i18n="terms.title">Termos de Uso</h2>
             <div class="terms-body">
-                <p>O DJ Flow é uma ferramenta de <strong>produtividade para organização de biblioteca musical</strong>.</p>
-                <p>Ao utilizar este aplicativo, você declara que:</p>
+                <p data-i18n-html="terms.intro">O DJ Flow é uma ferramenta de <strong>produtividade para organização de biblioteca musical</strong>.</p>
+                <p data-i18n="terms.declare">Ao utilizar este aplicativo, você declara que:</p>
                 <ul>
-                    <li>✅ Só irá baixar conteúdo que possui <strong>direito legal de uso</strong> (comprado, licenciado, domínio público ou autorizado pelo autor).</li>
-                    <li>✅ Não usará o app para fins de pirataria ou distribuição não autorizada.</li>
-                    <li>✅ É o único responsável pelo uso que faz do conteúdo baixado.</li>
+                    <li data-i18n-html="terms.item1">✅ Só irá baixar conteúdo que possui <strong>direito legal de uso</strong> (comprado, licenciado, domínio público ou autorizado pelo autor).</li>
+                    <li data-i18n="terms.item2">✅ Não usará o app para fins de pirataria ou distribuição não autorizada.</li>
+                    <li data-i18n="terms.item3">✅ É o único responsável pelo uso que faz do conteúdo baixado.</li>
                 </ul>
-                <p class="terms-note">Este software não armazena, distribui nem reproduz conteúdo de terceiros. O download é feito localmente no seu computador.</p>
+                <p class="terms-note" data-i18n="terms.note">Este software não armazena, distribui nem reproduz conteúdo de terceiros. O download é feito localmente no seu computador.</p>
             </div>
-            <button id="btn-accept-terms" class="btn-primary">
-                ✅ Li e Aceito os Termos
-            </button>
-            <button id="btn-reject-terms" class="btn-secondary" style="margin-top: 8px;">
-                ❌ Não Aceito — Fechar
-            </button>
+            <button id="btn-accept-terms" class="btn-primary" data-i18n="terms.accept">✅ Li e Aceito os Termos</button>
+            <button id="btn-reject-terms" class="btn-secondary" style="margin-top: 8px;" data-i18n="terms.reject">❌ Não Aceito — Fechar</button>
         </div>
     </div>
 
@@ -37,27 +33,31 @@
     <div id="quality-overlay" class="quality-overlay" hidden>
         <div class="quality-panel">
             <div class="quality-head">
-                <h2>Qualidade do Cofre</h2>
-                <button id="btn-quality-close" class="quality-close" aria-label="Fechar">✕</button>
+                <h2 data-i18n="quality.title">Qualidade do Cofre</h2>
+                <button id="btn-quality-close" class="quality-close" aria-label="Fechar" data-i18n-aria-label="quality.close">✕</button>
             </div>
-            <p id="quality-summary" class="quality-summary">Procurando faixas...</p>
+            <p id="quality-summary" class="quality-summary" data-i18n="quality.searching">Procurando faixas...</p>
             <ul id="quality-list" class="quality-list"></ul>
-            <p class="quality-note">Estimativa pelos agudos da faixa: arquivos fracos, como os do YouTube, perdem tudo acima de ~16 kHz.</p>
+            <p class="quality-note" data-i18n="quality.note">Estimativa pelos agudos da faixa: arquivos fracos, como os do YouTube, perdem tudo acima de ~16 kHz.</p>
         </div>
     </div>
 
     <!-- ==================== APP PRINCIPAL ==================== -->
     <header class="app-header satellite-header">
         <div class="logo">DJ <span>FLOW</span></div>
-        <div class="status-bar" style="font-size: 0.65rem; color: #888; text-transform: uppercase;">
+        <div class="status-bar">
             Rekordbox Bridge <span id="app-version" class="app-version"></span>
+            <select id="lang-select" class="lang-select" aria-label="Idioma" data-i18n-aria-label="lang.label">
+                <option value="pt">PT</option>
+                <option value="en">EN</option>
+            </select>
         </div>
     </header>
 
     <main class="satellite-main">
         <!-- ÁREA DE COLETA -->
         <div class="input-container">
-            <h3 class="input-label">Link da Faixa:</h3>
+            <h3 class="input-label" data-i18n="main.linkLabel">Link da Faixa:</h3>
             <div class="source-badges">
                 <span class="badge">YouTube</span>
                 <span class="badge">SoundCloud</span>
@@ -65,58 +65,52 @@
                 <span class="badge">Archive.org</span>
             </div>
             <div class="input-wrapper">
-                <input type="text" id="yt-link-input" placeholder="Cole a URL aqui..." autocomplete="off">
+                <input type="text" id="yt-link-input" placeholder="Cole a URL aqui..." data-i18n-placeholder="main.placeholder" autocomplete="off">
             </div>
-            
+
             <!-- TRACK PREVIEW (Hidden by default) -->
             <div id="track-preview" class="track-preview" style="display: none;">
                 <div class="preview-thumb" id="preview-thumb"></div>
                 <div class="preview-info">
-                    <div id="preview-title" class="preview-title">Título do vídeo</div>
+                    <div id="preview-title" class="preview-title" data-i18n="main.previewTitle">Título do vídeo</div>
                     <div id="preview-duration" class="preview-duration">04:20</div>
                 </div>
             </div>
 
-            <button id="btn-download" class="btn-primary" disabled>
+            <button id="btn-download" class="btn-primary" disabled data-i18n-html="main.download">
                 <span class="icon">⬇</span> Baixar para o Cofre
             </button>
             <div class="btn-row">
-                <button id="btn-folder" class="btn-secondary">
-                    📁 Abrir Cofre
-                </button>
-                <button id="btn-quality" class="btn-secondary" title="Confere a qualidade real de cada faixa do Cofre">
-                    🎚️ Qualidade
-                </button>
+                <button id="btn-folder" class="btn-secondary" data-i18n="main.openVault">📁 Abrir Cofre</button>
+                <button id="btn-quality" class="btn-secondary" title="Confere a qualidade real de cada faixa do Cofre" data-i18n="main.quality" data-i18n-title="main.qualityHint">🎚️ Qualidade</button>
             </div>
-            <button id="btn-update-engine" class="btn-secondary" title="Atualiza o yt-dlp caso os downloads parem de funcionar">
-                🔄 Atualizar Motor de Download
-            </button>
+            <button id="btn-update-engine" class="btn-secondary" title="Atualiza o yt-dlp caso os downloads parem de funcionar" data-i18n="main.updateEngine" data-i18n-title="main.updateEngineHint">🔄 Atualizar Motor de Download</button>
         </div>
 
         <!-- LOG STATUS -->
         <div class="log-container">
             <div class="log-header">
-                <h3>Registro de Atividade</h3>
+                <h3 data-i18n="log.title">Registro de Atividade</h3>
                 <span class="log-dot"></span>
             </div>
             <ul id="download-log">
-                <li class="empty-log">Aguardando entrada de link...</li>
+                <li class="empty-log" data-i18n="log.empty">Aguardando entrada de link...</li>
             </ul>
         </div>
-        
+
         <!-- DICA DE INTEGRAÇÃO REKORDBOX -->
-        <div class="helper-text">
+        <div class="helper-text" data-i18n-html="main.helper">
             <strong>Integração Auto-Import:</strong><br>
             Aponte seu Rekordbox para escanear a pasta: <br>
-            <span style="color:var(--accent-purple)">Músicas / Cofre DJ Flow</span>
+            <span class="helper-path">Músicas / Cofre DJ Flow</span>
         </div>
     </main>
 
-    <!-- SCRIPTS ENXUTOS APENAS PARA PONTE WEB -->
     <!-- js/audio-engine.js e js/midi-controller.js implementam um mixer de 2 decks
          com mapeamento MIDI, mas ainda não têm HTML/CSS correspondente nesta tela.
          Ficam fora do carregamento até essa UI ser construída, pois do jeito que
          estavam, pediam permissão de microfone e MIDI ao Windows sem necessidade. -->
+    <script src="js/i18n.js"></script>
     <script src="js/quality-analyzer.js"></script>
     <script src="js/app.js"></script>
 </body>

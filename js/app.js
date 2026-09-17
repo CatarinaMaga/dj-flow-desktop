@@ -1,11 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    const { t } = I18n;
+    I18n.apply();
+
     const API_BASE = 'http://127.0.0.1:3891';
     const API_TOKEN = window.djflow ? window.djflow.apiToken : '';
 
     if (window.djflow && window.djflow.appVersion) {
         document.getElementById('app-version').textContent = `v${window.djflow.appVersion}`;
     }
+
+    const langSelect = document.getElementById('lang-select');
+    langSelect.value = I18n.lang;
+    langSelect.addEventListener('change', () => {
+        I18n.setLanguage(langSelect.value);
+        location.reload();
+    });
 
     function apiUrl(route, params = {}) {
         const url = new URL(route, API_BASE);
@@ -14,23 +24,38 @@ document.addEventListener('DOMContentLoaded', () => {
         return url.toString();
     }
 
+    // O servidor responde { code, error }; o code vira texto no idioma escolhido.
+    function serverError(data) {
+        const key = `errors.${data.code}`;
+        const translated = data.code ? t(key) : key;
+        return new Error(translated !== key ? translated : data.error);
+    }
+
+    async function fetchJson(route, params) {
+        const res = await fetch(apiUrl(route, params));
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(t('errors.bad_format'));
+        }
+        const data = await res.json();
+        if (data.error) throw serverError(data);
+        return data;
+    }
+
     // ── Tela de Aceite ─────────────────────────────────────────────────────────
     const termsOverlay  = document.getElementById('terms-overlay');
-    const btnAccept     = document.getElementById('btn-accept-terms');
-    const btnReject     = document.getElementById('btn-reject-terms');
-
     const TERMS_KEY = 'djflow_terms_accepted';
 
     if (!localStorage.getItem(TERMS_KEY)) {
         termsOverlay.style.display = 'flex';
     }
 
-    btnAccept.addEventListener('click', () => {
+    document.getElementById('btn-accept-terms').addEventListener('click', () => {
         localStorage.setItem(TERMS_KEY, '1');
         termsOverlay.style.display = 'none';
     });
 
-    btnReject.addEventListener('click', () => {
+    document.getElementById('btn-reject-terms').addEventListener('click', () => {
         // Fecha o app via ponte exposta pelo preload.js (contextIsolation ligado
         // não dá acesso direto ao Electron aqui), senão fecha a janela.
         if (window.djflow) {
@@ -59,22 +84,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Elementos principais ───────────────────────────────────────────────────
-    const input         = document.getElementById('yt-link-input');
-    const btnDownload   = document.getElementById('btn-download');
-    const btnFolder     = document.getElementById('btn-folder');
+    const input           = document.getElementById('yt-link-input');
+    const btnDownload     = document.getElementById('btn-download');
     const btnUpdateEngine = document.getElementById('btn-update-engine');
-    const logList       = document.getElementById('download-log');
-    const trackPreview  = document.getElementById('track-preview');
-    const previewThumb  = document.getElementById('preview-thumb');
-    const previewTitle  = document.getElementById('preview-title');
+    const logList         = document.getElementById('download-log');
+    const trackPreview    = document.getElementById('track-preview');
+    const previewThumb    = document.getElementById('preview-thumb');
+    const previewTitle    = document.getElementById('preview-title');
     const previewDuration = document.getElementById('preview-duration');
 
     let logInitialized  = false;
     let currentTrackInfo = null;
 
-    // ── Persistência do log entre sessões ──────────────────────────────────────
+    // ── Registro de atividade (persistido entre sessões) ───────────────────────
+    // As mensagens são sempre inseridas como texto: elas carregam títulos de
+    // faixas e erros vindos de fora, e um título com HTML não pode virar código.
     const LOG_STORAGE_KEY = 'djflow_activity_log';
     const MAX_STORED_LOGS = 50;
+
+    function buildLogItem({ time, msg, color, link }) {
+        const li = document.createElement('li');
+        li.style.color = color;
+        const stamp = document.createElement('span');
+        stamp.style.opacity = '0.4';
+        stamp.textContent = `[${time}]`;
+        li.append(stamp, ` ${msg}`);
+        if (link && /^https:\/\//.test(link.url)) {
+            const a = document.createElement('a');
+            a.href = link.url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.style.color = 'var(--accent-cyan)';
+            a.textContent = link.label;
+            li.append(' ', a);
+        }
+        return li;
+    }
 
     function loadStoredLogs() {
         try {
@@ -83,12 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             logList.innerHTML = '';
             logInitialized = true;
-            // Salvos do mais novo pro mais antigo; renderiza na mesma ordem (prepend inverteria de novo)
             saved.forEach(entry => {
-                const li = document.createElement('li');
-                li.style.color = entry.color;
-                li.innerHTML = `<span style="opacity:0.4">[${entry.time}]</span> ${entry.msg}`;
-                logList.appendChild(li);
+                // Entradas das versões antigas eram salvas com HTML; mostra só o texto.
+                const msg = String(entry.msg).replace(/<[^>]*>/g, '');
+                logList.appendChild(buildLogItem({ ...entry, msg }));
             });
         } catch (e) {
             console.warn('Falha ao carregar histórico de atividade salvo:', e);
@@ -96,27 +139,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function persistLog(time, msg, color) {
+    function persistLog(entry) {
         try {
             const saved = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY) || '[]');
-            saved.unshift({ time, msg, color });
+            saved.unshift(entry);
             localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(saved.slice(0, MAX_STORED_LOGS)));
         } catch (e) {
             console.warn('Falha ao salvar histórico de atividade:', e);
         }
     }
 
-    function addLog(msg, color = "#ccc") {
+    function addLog(msg, color = '#ccc', link = null) {
         if (!logInitialized) {
             logList.innerHTML = '';
             logInitialized = true;
         }
-        const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const li = document.createElement('li');
-        li.style.color = color;
-        li.innerHTML = `<span style="opacity:0.4">[${time}]</span> ${msg}`;
-        logList.prepend(li);
-        persistLog(time, msg, color);
+        const entry = { time: I18n.formatTime(new Date()), msg, color, link };
+        logList.prepend(buildLogItem(entry));
+        persistLog(entry);
     }
 
     loadStoredLogs();
@@ -124,7 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Aviso de nova versão do DJ Flow disponível ─────────────────────────────
     if (window.djflow) {
         window.djflow.onUpdateAvailable((info) => {
-            addLog(`⬆️ Nova versão disponível: v${info.version}. <a href="${info.url}" target="_blank" style="color:var(--accent-cyan)">Baixar</a>`, 'var(--accent-cyan)');
+            addLog(t('log.updateAvailable', { version: info.version }), 'var(--accent-cyan)',
+                { url: info.url, label: t('log.updateDownload') });
         });
     }
 
@@ -143,39 +184,33 @@ document.addEventListener('DOMContentLoaded', () => {
         timeout = setTimeout(fetchTrackInfo, 600);
     });
 
+    function shortTitle(title) {
+        return title.length > 40 ? `${title.substring(0, 40)}...` : title;
+    }
+
     // ── Busca info da faixa ────────────────────────────────────────────────────
     async function fetchTrackInfo() {
         const url = input.value.trim();
         if (!url) return;
 
-        addLog(`🔍 Analisando link...`, 'var(--accent-cyan)');
+        addLog(t('log.analyzingLink'), 'var(--accent-cyan)');
 
         try {
-            const res = await fetch(apiUrl('/info/youtube', { url }));
-
-            const contentType = res.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await res.text();
-                console.error('Resposta não-JSON:', text.substring(0, 100));
-                throw new Error('O servidor local retornou um formato inesperado. Verifique se há outro programa usando a porta 3891.');
-            }
-
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-
+            const data = await fetchJson('/info/youtube', { url });
             currentTrackInfo = data;
+            const title = data.title || t('log.fileFallback');
 
-            previewTitle.textContent = data.title;
+            previewTitle.textContent = title;
             previewDuration.textContent = data.duration || '';
-            previewThumb.style.backgroundImage = data.thumbnail ? `url(${data.thumbnail})` : 'none';
+            previewThumb.style.backgroundImage = /^https:\/\//.test(data.thumbnail) ? `url("${encodeURI(data.thumbnail)}")` : 'none';
 
             trackPreview.style.display = 'flex';
             btnDownload.disabled = false;
-            addLog(`⭐ Pronto: ${data.title.substring(0, 40)}${data.title.length > 40 ? '...' : ''}`, 'var(--accent-green)');
+            addLog(t('log.ready', { title: shortTitle(title) }), 'var(--accent-green)');
 
         } catch (e) {
             console.error(e);
-            addLog(`❌ ERRO: ${e.message}`, 'var(--danger)');
+            addLog(t('log.error', { message: e.message }), 'var(--danger)');
             trackPreview.style.display = 'none';
             btnDownload.disabled = true;
         }
@@ -189,70 +224,58 @@ document.addEventListener('DOMContentLoaded', () => {
         input.value = '';
         btnDownload.disabled = true;
         trackPreview.style.display = 'none';
+        btnDownload.innerHTML = t('main.downloading');
 
-        const originalText = btnDownload.innerHTML;
-        btnDownload.innerHTML = `<span class="icon">⏳</span> Materializando no Cofre...`;
-
-        addLog(`🚀 Iniciando download...`, 'var(--accent-purple)');
+        addLog(t('log.downloadStart'), 'var(--accent-purple)');
 
         try {
-            const res = await fetch(apiUrl('/download/disk', { url }));
-
-            const contentType = res.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Erro de comunicação com o motor (Porta 3891 ocupada).');
-            }
-
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-
-            addLog(`✅ "${currentTrackInfo?.title || 'Arquivo'}" salvo no Cofre!`, 'var(--accent-green)');
+            await fetchJson('/download/disk', { url });
+            addLog(t('log.saved', { title: currentTrackInfo?.title || t('log.fileFallback') }), 'var(--accent-green)');
             currentTrackInfo = null;
-
         } catch (e) {
-            addLog(`❌ ERRO: ${e.message}`, 'var(--danger)');
+            const message = e.message === t('errors.bad_format') ? t('errors.engine_unreachable') : e.message;
+            addLog(t('log.error', { message }), 'var(--danger)');
         } finally {
             btnDownload.disabled = true;
-            btnDownload.innerHTML = originalText;
+            btnDownload.innerHTML = t('main.download');
         }
     });
 
     // ── Abrir pasta ────────────────────────────────────────────────────────────
-    btnFolder.addEventListener('click', async () => {
+    document.getElementById('btn-folder').addEventListener('click', async () => {
         try {
-            await fetch(apiUrl('/open-folder'));
+            await fetchJson('/open-folder');
         } catch (e) {
             console.error('Erro ao abrir pasta', e);
-            addLog(`❌ Não foi possível abrir a pasta.`, 'var(--danger)');
+            addLog(t('log.folderError'), 'var(--danger)');
         }
     });
 
     // ── Atualizar motor de download (yt-dlp) ───────────────────────────────────
     btnUpdateEngine.addEventListener('click', async () => {
-        const originalText = btnUpdateEngine.innerHTML;
         btnUpdateEngine.disabled = true;
-        btnUpdateEngine.innerHTML = `<span class="icon">⏳</span> Verificando...`;
-        addLog(`🔄 Verificando atualização do motor de download...`, 'var(--accent-cyan)');
+        btnUpdateEngine.innerHTML = t('main.checking');
+        addLog(t('log.engineChecking'), 'var(--accent-cyan)');
 
         try {
-            const res = await fetch(apiUrl('/update-engine'));
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-            const today = new Date().toLocaleDateString('pt-BR');
+            const data = await fetchJson('/update-engine');
+            const today = I18n.formatDate(new Date());
+            // versionDate chega como "AAAA-MM-DD"; em UTC pra não virar o dia anterior no fuso do Brasil.
+            const date = data.versionDate ? I18n.formatDate(new Date(`${data.versionDate}T00:00:00Z`), { utc: true }) : null;
             let message;
-            if (data.updated && data.versionDate) {
-                message = `✅ Motor de download atualizado para a versão de ${data.versionDate}.`;
-            } else if (data.versionDate) {
-                message = `✅ Motor de download em dia: versão de ${data.versionDate} (verificado em ${today}).`;
+            if (data.updated && date) {
+                message = t('log.engineUpdated', { date });
+            } else if (date) {
+                message = t('log.engineUpToDate', { date, today });
             } else {
-                message = `✅ Verificação do motor de download concluída em ${today}.`;
+                message = t('log.engineChecked', { today });
             }
             addLog(message, 'var(--accent-green)');
         } catch (e) {
-            addLog(`❌ ERRO ao atualizar motor: ${e.message}`, 'var(--danger)');
+            addLog(t('log.engineError', { message: e.message }), 'var(--danger)');
         } finally {
             btnUpdateEngine.disabled = false;
-            btnUpdateEngine.innerHTML = originalText;
+            btnUpdateEngine.textContent = t('main.updateEngine');
         }
     });
 
@@ -265,10 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const qualitySummary = document.getElementById('quality-summary');
     const qualityList    = document.getElementById('quality-list');
     let qualityScanRunning = false;
-
-    function formatKhz(hz) {
-        return (hz / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-    }
 
     function readDuration(url) {
         return new Promise((resolve) => {
@@ -299,10 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = apiUrl('/quality/file', { name: file.name });
         const duration = await readDuration(url);
         if (!Number.isFinite(duration) || duration <= 0) {
-            return { badgeClass: 'erro', badgeText: 'Erro', detail: 'Não foi possível ler este arquivo.' };
+            return { badgeClass: 'erro', badgeText: t('quality.badge.error'), detail: t('quality.unreadable') };
         }
         if (duration > MAX_ANALYSIS_SECONDS) {
-            return { badgeClass: '', badgeText: 'Pulada', detail: `Arquivo longo (${Math.round(duration / 60)} min), parece mix ou álbum inteiro.` };
+            return { badgeClass: '', badgeText: t('quality.badge.skipped'), detail: t('quality.long', { minutes: Math.round(duration / 60) }) };
         }
 
         const response = await fetch(url);
@@ -311,12 +330,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const avgKbps = (file.size * 8) / duration / 1000;
         const result = QualityAnalyzer.classify({ cutoffHz, avgKbps, ext: file.ext });
 
+        let advice;
+        if (result.suspicious) {
+            advice = result.lossless
+                ? t('quality.advice.suspiciousLossless')
+                : t('quality.advice.suspiciousKbps', { kbps: Math.round(avgKbps) });
+        } else {
+            advice = t(`quality.advice.${result.level}`);
+        }
+
         return {
             level: result.level,
             suspicious: result.suspicious,
             badgeClass: result.suspicious ? 'muito-baixa' : result.level,
-            badgeText: result.suspicious ? 'Suspeita' : result.label,
-            detail: `~${Math.round(avgKbps)} kbps · agudos até ${formatKhz(cutoffHz)} kHz · ${result.advice}`
+            badgeText: result.suspicious ? t('quality.badge.suspicious') : t(`quality.badge.${result.level}`),
+            detail: t('quality.detail', { kbps: Math.round(avgKbps), khz: I18n.formatNumber(cutoffHz / 1000, 1), advice })
         };
     }
 
@@ -324,32 +352,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (qualityScanRunning) return;
         qualityScanRunning = true;
         qualityList.innerHTML = '';
-        qualitySummary.textContent = 'Procurando faixas...';
+        qualitySummary.textContent = t('quality.searching');
 
         try {
-            const res = await fetch(apiUrl('/quality/files'));
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
+            const data = await fetchJson('/quality/files');
 
             if (data.files.length === 0) {
-                qualitySummary.textContent = 'Nenhum arquivo de áudio no Cofre ainda.';
+                qualitySummary.textContent = t('quality.empty');
                 return;
             }
 
             const items = data.files.map(file => {
                 const li = document.createElement('li');
                 li.className = 'quality-item';
-                li.innerHTML = '<div class="quality-row"><span class="quality-name"></span><span class="quality-badge">...</span></div><div class="quality-detail">Aguardando análise</div>';
+                li.innerHTML = '<div class="quality-row"><span class="quality-name"></span><span class="quality-badge">...</span></div><div class="quality-detail"></div>';
                 li.querySelector('.quality-name').textContent = file.name;
                 li.querySelector('.quality-name').title = file.name;
+                li.querySelector('.quality-detail').textContent = t('quality.waiting');
                 qualityList.appendChild(li);
                 return li;
             });
 
             const counts = { alta: 0, media: 0, baixa: 0, 'muito-baixa': 0, suspeitas: 0, outras: 0 };
             for (let i = 0; i < data.files.length; i++) {
-                qualitySummary.textContent = `Analisando ${i + 1} de ${data.files.length}...`;
-                renderQualityItem(items[i], { badgeClass: '', badgeText: '...', detail: 'Analisando os agudos da faixa...' });
+                qualitySummary.textContent = t('quality.analyzingN', { current: i + 1, total: data.files.length });
+                renderQualityItem(items[i], { badgeClass: '', badgeText: '...', detail: t('quality.analyzingItem') });
                 try {
                     const result = await analyzeCofreFile(data.files[i]);
                     renderQualityItem(items[i], result);
@@ -359,18 +386,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (e) {
                     counts.outras++;
                     console.error('Falha ao analisar', data.files[i].name, e);
-                    renderQualityItem(items[i], { badgeClass: 'erro', badgeText: 'Erro', detail: 'Formato não suportado ou arquivo corrompido.' });
+                    renderQualityItem(items[i], { badgeClass: 'erro', badgeText: t('quality.badge.error'), detail: t('quality.unsupported') });
                 }
             }
 
             const weak = counts.baixa + counts['muito-baixa'];
-            qualitySummary.textContent = `${data.files.length} faixas: ${counts.alta} alta, ${counts.media} média, ${weak} baixa` +
-                (counts.suspeitas ? `, ${counts.suspeitas} suspeita(s) de conversão` : '') +
-                (counts.outras ? `, ${counts.outras} pulada(s) ou com erro.` : '.');
-            addLog(`🎚️ Qualidade do Cofre: ${counts.alta} alta, ${counts.media} média, ${weak} baixa${counts.suspeitas ? `, ${counts.suspeitas} suspeita(s)` : ''}.`,
+            const totals = { total: data.files.length, high: counts.alta, mid: counts.media, low: weak };
+            qualitySummary.textContent = t('quality.summary', totals) +
+                (counts.suspeitas ? t('quality.summarySuspicious', { count: counts.suspeitas }) : '') +
+                (counts.outras ? t('quality.summaryOthers', { count: counts.outras }) : '') + '.';
+            addLog(t('log.qualitySummary', totals) +
+                (counts.suspeitas ? t('log.qualitySuspicious', { count: counts.suspeitas }) : '') + '.',
                 weak || counts.suspeitas ? '#ffb86c' : 'var(--accent-green)');
         } catch (e) {
-            qualitySummary.textContent = `Não foi possível analisar o Cofre: ${e.message}`;
+            qualitySummary.textContent = t('quality.failed', { message: e.message });
         } finally {
             qualityScanRunning = false;
         }
