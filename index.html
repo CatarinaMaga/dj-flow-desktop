@@ -33,6 +33,19 @@
         </div>
     </div>
 
+    <!-- ==================== DETECTOR DE QUALIDADE ==================== -->
+    <div id="quality-overlay" class="quality-overlay" hidden>
+        <div class="quality-panel">
+            <div class="quality-head">
+                <h2>Qualidade do Cofre</h2>
+                <button id="btn-quality-close" class="quality-close" aria-label="Fechar">✕</button>
+            </div>
+            <p id="quality-summary" class="quality-summary">Procurando faixas...</p>
+            <ul id="quality-list" class="quality-list"></ul>
+            <p class="quality-note">Estimativa pelos agudos da faixa: arquivos fracos, como os do YouTube, perdem tudo acima de ~16 kHz.</p>
+        </div>
+    </div>
+
     <!-- ==================== APP PRINCIPAL ==================== -->
     <header class="app-header satellite-header">
         <div class="logo">DJ <span>FLOW</span></div>
@@ -67,9 +80,14 @@
             <button id="btn-download" class="btn-primary" disabled>
                 <span class="icon">⬇</span> Baixar para o Cofre
             </button>
-            <button id="btn-folder" class="btn-secondary">
-                📁 Abrir Pasta do Cofre
-            </button>
+            <div class="btn-row">
+                <button id="btn-folder" class="btn-secondary">
+                    📁 Abrir Cofre
+                </button>
+                <button id="btn-quality" class="btn-secondary" title="Confere a qualidade real de cada faixa do Cofre">
+                    🎚️ Qualidade
+                </button>
+            </div>
             <button id="btn-update-engine" class="btn-secondary" title="Atualiza o yt-dlp caso os downloads parem de funcionar">
                 🔄 Atualizar Motor de Download
             </button>
@@ -99,6 +117,7 @@
          com mapeamento MIDI, mas ainda não têm HTML/CSS correspondente nesta tela.
          Ficam fora do carregamento até essa UI ser construída, pois do jeito que
          estavam, pediam permissão de microfone e MIDI ao Windows sem necessidade. -->
+    <script src="js/quality-analyzer.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

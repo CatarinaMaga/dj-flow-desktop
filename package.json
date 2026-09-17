@@ -1,14 +1,14 @@
 {
   "name": "dj-flow-desktop",
-  "version": "1.0.0",
-  "description": "DJ Flow - O braço direito do DJ para Rekordbox. Baixe áudios para o seu cofre instantaneamente.",
+  "version": "1.1.0",
+  "description": "DJ Flow - app para DJs que usam Rekordbox: detector de qualidade real das músicas (320 kbps de verdade) e Cofre organizado.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
     "dist": "npm run build"
   },
-  "author": "DJ Flow Team",
+  "author": "Catarina Magalhães",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.djflow.desktop",
-    "productName": "DJ Flow Setup",
+    "productName": "DJ Flow",
     "asar": false,
     "directories": {
       "output": "dist"

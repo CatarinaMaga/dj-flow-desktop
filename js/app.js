@@ -1,5 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    const API_BASE = 'http://127.0.0.1:3891';
+    const API_TOKEN = window.djflow ? window.djflow.apiToken : '';
+
+    function apiUrl(route, params = {}) {
+        const url = new URL(route, API_BASE);
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+        url.searchParams.set('token', API_TOKEN);
+        return url.toString();
+    }
+
     // ── Tela de Aceite ─────────────────────────────────────────────────────────
     const termsOverlay  = document.getElementById('terms-overlay');
     const btnAccept     = document.getElementById('btn-accept-terms');
@@ -137,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog(`🔍 Analisando link...`, 'var(--accent-cyan)');
 
         try {
-            const res = await fetch(`http://localhost:3891/info/youtube?url=${encodeURIComponent(url)}`);
+            const res = await fetch(apiUrl('/info/youtube', { url }));
 
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
@@ -182,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog(`🚀 Iniciando download...`, 'var(--accent-purple)');
 
         try {
-            const res = await fetch(`http://localhost:3891/download/disk?url=${encodeURIComponent(url)}`);
+            const res = await fetch(apiUrl('/download/disk', { url }));
 
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
@@ -206,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Abrir pasta ────────────────────────────────────────────────────────────
     btnFolder.addEventListener('click', async () => {
         try {
-            await fetch(`http://localhost:3891/open-folder`);
+            await fetch(apiUrl('/open-folder'));
         } catch (e) {
             console.error('Erro ao abrir pasta', e);
             addLog(`❌ Não foi possível abrir a pasta.`, 'var(--danger)');
@@ -221,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog(`🔄 Verificando atualização do motor de download...`, 'var(--accent-cyan)');
 
         try {
-            const res = await fetch(`http://localhost:3891/update-engine`);
+            const res = await fetch(apiUrl('/update-engine'));
             const data = await res.json();
             if (data.error) throw new Error(data.error);
             addLog(`✅ Motor de download OK: ${data.message}`, 'var(--accent-green)');
@@ -231,5 +241,134 @@ document.addEventListener('DOMContentLoaded', () => {
             btnUpdateEngine.disabled = false;
             btnUpdateEngine.innerHTML = originalText;
         }
+    });
+
+    // ── Detector de qualidade ──────────────────────────────────────────────────
+    // Faixas mais longas que isso (mixes, álbuns inteiros) são puladas: decodificar
+    // 1 hora de áudio de uma vez ocuparia mais de 1 GB de memória.
+    const MAX_ANALYSIS_SECONDS = 12 * 60;
+
+    const qualityOverlay = document.getElementById('quality-overlay');
+    const qualitySummary = document.getElementById('quality-summary');
+    const qualityList    = document.getElementById('quality-list');
+    let qualityScanRunning = false;
+
+    function formatKhz(hz) {
+        return (hz / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    }
+
+    function readDuration(url) {
+        return new Promise((resolve) => {
+            const audio = new Audio();
+            const finish = (value) => {
+                clearTimeout(timer);
+                audio.removeAttribute('src');
+                audio.load();
+                resolve(value);
+            };
+            const timer = setTimeout(() => finish(NaN), 15000);
+            audio.preload = 'metadata';
+            audio.addEventListener('loadedmetadata', () => finish(audio.duration), { once: true });
+            audio.addEventListener('error', () => finish(NaN), { once: true });
+            audio.src = url;
+        });
+    }
+
+    function renderQualityItem(item, { badgeClass, badgeText, detail, suspicious }) {
+        item.classList.toggle('suspicious', Boolean(suspicious));
+        const badge = item.querySelector('.quality-badge');
+        badge.className = `quality-badge ${badgeClass}`;
+        badge.textContent = badgeText;
+        item.querySelector('.quality-detail').textContent = detail;
+    }
+
+    async function analyzeCofreFile(file) {
+        const url = apiUrl('/quality/file', { name: file.name });
+        const duration = await readDuration(url);
+        if (!Number.isFinite(duration) || duration <= 0) {
+            return { badgeClass: 'erro', badgeText: 'Erro', detail: 'Não foi possível ler este arquivo.' };
+        }
+        if (duration > MAX_ANALYSIS_SECONDS) {
+            return { badgeClass: '', badgeText: 'Pulada', detail: `Arquivo longo (${Math.round(duration / 60)} min), parece mix ou álbum inteiro.` };
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('arquivo indisponível');
+        const { cutoffHz } = await QualityAnalyzer.analyzeArrayBuffer(await response.arrayBuffer());
+        const avgKbps = (file.size * 8) / duration / 1000;
+        const result = QualityAnalyzer.classify({ cutoffHz, avgKbps, ext: file.ext });
+
+        return {
+            level: result.level,
+            suspicious: result.suspicious,
+            badgeClass: result.suspicious ? 'muito-baixa' : result.level,
+            badgeText: result.suspicious ? 'Suspeita' : result.label,
+            detail: `~${Math.round(avgKbps)} kbps · agudos até ${formatKhz(cutoffHz)} kHz · ${result.advice}`
+        };
+    }
+
+    async function scanCofreQuality() {
+        if (qualityScanRunning) return;
+        qualityScanRunning = true;
+        qualityList.innerHTML = '';
+        qualitySummary.textContent = 'Procurando faixas...';
+
+        try {
+            const res = await fetch(apiUrl('/quality/files'));
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            if (data.files.length === 0) {
+                qualitySummary.textContent = 'Nenhum arquivo de áudio no Cofre ainda.';
+                return;
+            }
+
+            const items = data.files.map(file => {
+                const li = document.createElement('li');
+                li.className = 'quality-item';
+                li.innerHTML = '<div class="quality-row"><span class="quality-name"></span><span class="quality-badge">...</span></div><div class="quality-detail">Aguardando análise</div>';
+                li.querySelector('.quality-name').textContent = file.name;
+                li.querySelector('.quality-name').title = file.name;
+                qualityList.appendChild(li);
+                return li;
+            });
+
+            const counts = { alta: 0, media: 0, baixa: 0, 'muito-baixa': 0, suspeitas: 0, outras: 0 };
+            for (let i = 0; i < data.files.length; i++) {
+                qualitySummary.textContent = `Analisando ${i + 1} de ${data.files.length}...`;
+                renderQualityItem(items[i], { badgeClass: '', badgeText: '...', detail: 'Analisando os agudos da faixa...' });
+                try {
+                    const result = await analyzeCofreFile(data.files[i]);
+                    renderQualityItem(items[i], result);
+                    if (result.level) counts[result.level]++;
+                    else counts.outras++;
+                    if (result.suspicious) counts.suspeitas++;
+                } catch (e) {
+                    counts.outras++;
+                    console.error('Falha ao analisar', data.files[i].name, e);
+                    renderQualityItem(items[i], { badgeClass: 'erro', badgeText: 'Erro', detail: 'Formato não suportado ou arquivo corrompido.' });
+                }
+            }
+
+            const weak = counts.baixa + counts['muito-baixa'];
+            qualitySummary.textContent = `${data.files.length} faixas: ${counts.alta} alta, ${counts.media} média, ${weak} baixa` +
+                (counts.suspeitas ? `, ${counts.suspeitas} suspeita(s) de conversão` : '') +
+                (counts.outras ? `, ${counts.outras} pulada(s) ou com erro.` : '.');
+            addLog(`🎚️ Qualidade do Cofre: ${counts.alta} alta, ${counts.media} média, ${weak} baixa${counts.suspeitas ? `, ${counts.suspeitas} suspeita(s)` : ''}.`,
+                weak || counts.suspeitas ? '#ffb86c' : 'var(--accent-green)');
+        } catch (e) {
+            qualitySummary.textContent = `Não foi possível analisar o Cofre: ${e.message}`;
+        } finally {
+            qualityScanRunning = false;
+        }
+    }
+
+    document.getElementById('btn-quality').addEventListener('click', () => {
+        qualityOverlay.hidden = false;
+        scanCofreQuality();
+    });
+
+    document.getElementById('btn-quality-close').addEventListener('click', () => {
+        qualityOverlay.hidden = true;
     });
 });

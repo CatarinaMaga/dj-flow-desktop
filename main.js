@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const crypto = require('crypto');
 const { execFile } = require('child_process');
 const express = require('express');
 const cors = require('cors');
@@ -13,8 +14,19 @@ const REPO_NAME = 'dj-flow-desktop';
 const serverApp = express();
 const PORT = 3891;
 
+// Chave gerada a cada abertura e entregue só à janela do app (via preload).
+// Sem ela, sites abertos no navegador conseguiriam chamar este servidor e
+// ler os arquivos do Cofre, já que o CORS precisa ficar liberado pro file://.
+const API_TOKEN = crypto.randomUUID();
+
 serverApp.use(cors());
 serverApp.use(express.json());
+serverApp.use((req, res, next) => {
+    if (req.query.token !== API_TOKEN) {
+        return res.status(401).json({ error: 'Acesso não autorizado ao backend do DJ Flow.' });
+    }
+    next();
+});
 
 // cofrePath será definido dentro do whenReady (único), antes de qualquer uso
 let cofrePath = '';
@@ -157,6 +169,42 @@ serverApp.get('/update-engine', async (req, res) => {
     }
 });
 
+const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.aac', '.flac', '.wav', '.aif', '.aiff', '.ogg', '.opus', '.webm']);
+
+// Aceita só um nome de arquivo solto do Cofre (sem pastas), pra ninguém
+// usar "..\" e ler arquivos de fora dele.
+function resolveCofreAudio(name) {
+    if (typeof name !== 'string' || !name || name !== path.basename(name)) return null;
+    if (!AUDIO_EXTENSIONS.has(path.extname(name).toLowerCase())) return null;
+    const fullPath = path.join(cofrePath, name);
+    return fs.existsSync(fullPath) ? fullPath : null;
+}
+
+// Endpoint: listar os áudios do Cofre para o detector de qualidade
+serverApp.get('/quality/files', (req, res) => {
+    if (!cofrePath) {
+        return res.status(500).json({ error: 'Cofre ainda não inicializado.' });
+    }
+    const files = fs.readdirSync(cofrePath, { withFileTypes: true })
+        .filter(entry => entry.isFile() && AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+        .map(entry => ({
+            name: entry.name,
+            ext: path.extname(entry.name).slice(1).toLowerCase(),
+            size: fs.statSync(path.join(cofrePath, entry.name)).size
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    res.json({ files });
+});
+
+// Endpoint: entregar um áudio do Cofre para análise no app
+serverApp.get('/quality/file', (req, res) => {
+    const fullPath = cofrePath && resolveCofreAudio(req.query.name);
+    if (!fullPath) {
+        return res.status(404).json({ error: 'Arquivo não encontrado no Cofre.' });
+    }
+    res.sendFile(fullPath);
+});
+
 // Catch-all para evitar retornar HTML em caso de erro de rota ou 404
 serverApp.use((req, res) => {
     res.status(404).json({ error: 'Rota não encontrada no backend do DJ Flow.' });
@@ -280,7 +328,7 @@ app.whenReady().then(() => {
   }
 
   // 2. Iniciar servidor local
-  localServer = serverApp.listen(PORT, () => {
+  localServer = serverApp.listen(PORT, '127.0.0.1', () => {
       console.log(`Porta ${PORT} pronta para Download Bridge.`);
   }).on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
@@ -303,6 +351,10 @@ app.on('window-all-closed', () => {
 });
 app.on('quit', () => {
   if (localServer) localServer.close();
+});
+
+ipcMain.on('get-api-token', (event) => {
+  event.returnValue = API_TOKEN;
 });
 
 // IPC: fechar o app quando o usuário rejeitar os termos
