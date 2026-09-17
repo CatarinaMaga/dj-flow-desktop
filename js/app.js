@@ -24,18 +24,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return url.toString();
     }
 
+    // Erros levam a chave de tradução junto (i18nKey), pra o registro poder
+    // guardar a chave e traduzir de novo se o idioma mudar depois.
+    function translatedError(key, fallback) {
+        const error = new Error(t(key) !== key ? t(key) : fallback);
+        if (t(key) !== key) error.i18nKey = key;
+        return error;
+    }
+
     // O servidor responde { code, error }; o code vira texto no idioma escolhido.
     function serverError(data) {
-        const key = `errors.${data.code}`;
-        const translated = data.code ? t(key) : key;
-        return new Error(translated !== key ? translated : data.error);
+        return translatedError(`errors.${data.code}`, data.error);
     }
 
     async function fetchJson(route, params) {
         const res = await fetch(apiUrl(route, params));
         const contentType = res.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-            throw new Error(t('errors.bad_format'));
+            throw translatedError('errors.bad_format');
         }
         const data = await res.json();
         if (data.error) throw serverError(data);
@@ -97,25 +103,54 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTrackInfo = null;
 
     // ── Registro de atividade (persistido entre sessões) ───────────────────────
-    // As mensagens são sempre inseridas como texto: elas carregam títulos de
-    // faixas e erros vindos de fora, e um título com HTML não pode virar código.
-    const LOG_STORAGE_KEY = 'djflow_activity_log';
+    // Cada entrada guarda QUAL mensagem aconteceu (chaves de tradução + dados) e
+    // o horário como timestamp, e a frase é montada no idioma atual ao exibir.
+    // Assim, trocar PT/EN traduz também o histórico. As mensagens são inseridas
+    // como texto: carregam títulos de faixas e erros de fora, que não podem virar código.
+    const LOG_STORAGE_KEY = 'djflow_activity_log_v2';
+    const LEGACY_LOG_KEY = 'djflow_activity_log';
     const MAX_STORED_LOGS = 50;
 
-    function buildLogItem({ time, msg, color, link }) {
+    // O histórico das versões até a 1.2.0 foi salvo como frase pronta, sem como
+    // traduzir; ele é descartado uma vez.
+    localStorage.removeItem(LEGACY_LOG_KEY);
+
+    function resolveVars(vars = {}) {
+        const out = {};
+        for (const [name, value] of Object.entries(vars)) {
+            if (value && typeof value === 'object' && '$t' in value) out[name] = t(value.$t);
+            else if (value && typeof value === 'object' && '$date' in value) out[name] = I18n.formatDate(new Date(value.$date), { utc: value.utc });
+            else out[name] = value;
+        }
+        return out;
+    }
+
+    function renderParts(parts) {
+        return parts.map(part => ('text' in part ? part.text : t(part.key, resolveVars(part.vars)))).join('');
+    }
+
+    function msg(key, vars) {
+        return [{ key, vars }];
+    }
+
+    function errorVar(error) {
+        return error.i18nKey ? { $t: error.i18nKey } : error.message;
+    }
+
+    function buildLogItem({ ts, parts, color, link }) {
         const li = document.createElement('li');
         li.style.color = color;
         const stamp = document.createElement('span');
         stamp.style.opacity = '0.4';
-        stamp.textContent = `[${time}]`;
-        li.append(stamp, ` ${msg}`);
+        stamp.textContent = `[${I18n.formatTime(new Date(ts))}]`;
+        li.append(stamp, ` ${renderParts(parts)}`);
         if (link && /^https:\/\//.test(link.url)) {
             const a = document.createElement('a');
             a.href = link.url;
             a.target = '_blank';
             a.rel = 'noopener';
             a.style.color = 'var(--accent-cyan)';
-            a.textContent = link.label;
+            a.textContent = t(link.labelKey);
             li.append(' ', a);
         }
         return li;
@@ -128,11 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             logList.innerHTML = '';
             logInitialized = true;
-            saved.forEach(entry => {
-                // Entradas das versões antigas eram salvas com HTML; mostra só o texto.
-                const msg = String(entry.msg).replace(/<[^>]*>/g, '');
-                logList.appendChild(buildLogItem({ ...entry, msg }));
-            });
+            saved.forEach(entry => logList.appendChild(buildLogItem(entry)));
         } catch (e) {
             console.warn('Falha ao carregar histórico de atividade salvo:', e);
             localStorage.removeItem(LOG_STORAGE_KEY);
@@ -149,13 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addLog(msg, color = '#ccc', link = null) {
+    function addLog(parts, color = '#ccc', link = null) {
         if (!logInitialized) {
             logList.innerHTML = '';
             logInitialized = true;
         }
-        const entry = { time: I18n.formatTime(new Date()), msg, color, link };
+        const entry = { ts: Date.now(), parts, color, link };
         logList.prepend(buildLogItem(entry));
+        logList.scrollTop = 0;
         persistLog(entry);
     }
 
@@ -164,8 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Aviso de nova versão do DJ Flow disponível ─────────────────────────────
     if (window.djflow) {
         window.djflow.onUpdateAvailable((info) => {
-            addLog(t('log.updateAvailable', { version: info.version }), 'var(--accent-cyan)',
-                { url: info.url, label: t('log.updateDownload') });
+            addLog(msg('log.updateAvailable', { version: info.version }), 'var(--accent-cyan)',
+                { url: info.url, labelKey: 'log.updateDownload' });
         });
     }
 
@@ -193,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = input.value.trim();
         if (!url) return;
 
-        addLog(t('log.analyzingLink'), 'var(--accent-cyan)');
+        addLog(msg('log.analyzingLink'), 'var(--accent-cyan)');
 
         try {
             const data = await fetchJson('/info/youtube', { url });
@@ -206,11 +238,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             trackPreview.style.display = 'flex';
             btnDownload.disabled = false;
-            addLog(t('log.ready', { title: shortTitle(title) }), 'var(--accent-green)');
+            addLog(msg('log.ready', { title: data.title ? shortTitle(data.title) : { $t: 'log.fileFallback' } }), 'var(--accent-green)');
 
         } catch (e) {
             console.error(e);
-            addLog(t('log.error', { message: e.message }), 'var(--danger)');
+            addLog(msg('log.error', { message: errorVar(e) }), 'var(--danger)');
             trackPreview.style.display = 'none';
             btnDownload.disabled = true;
         }
@@ -226,15 +258,15 @@ document.addEventListener('DOMContentLoaded', () => {
         trackPreview.style.display = 'none';
         btnDownload.innerHTML = t('main.downloading');
 
-        addLog(t('log.downloadStart'), 'var(--accent-purple)');
+        addLog(msg('log.downloadStart'), 'var(--accent-purple)');
 
         try {
             await fetchJson('/download/disk', { url });
-            addLog(t('log.saved', { title: currentTrackInfo?.title || t('log.fileFallback') }), 'var(--accent-green)');
+            addLog(msg('log.saved', { title: currentTrackInfo?.title || { $t: 'log.fileFallback' } }), 'var(--accent-green)');
             currentTrackInfo = null;
         } catch (e) {
-            const message = e.message === t('errors.bad_format') ? t('errors.engine_unreachable') : e.message;
-            addLog(t('log.error', { message }), 'var(--danger)');
+            const message = e.i18nKey === 'errors.bad_format' ? { $t: 'errors.engine_unreachable' } : errorVar(e);
+            addLog(msg('log.error', { message }), 'var(--danger)');
         } finally {
             btnDownload.disabled = true;
             btnDownload.innerHTML = t('main.download');
@@ -247,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetchJson('/open-folder');
         } catch (e) {
             console.error('Erro ao abrir pasta', e);
-            addLog(t('log.folderError'), 'var(--danger)');
+            addLog(msg('log.folderError'), 'var(--danger)');
         }
     });
 
@@ -255,24 +287,24 @@ document.addEventListener('DOMContentLoaded', () => {
     btnUpdateEngine.addEventListener('click', async () => {
         btnUpdateEngine.disabled = true;
         btnUpdateEngine.innerHTML = t('main.checking');
-        addLog(t('log.engineChecking'), 'var(--accent-cyan)');
+        addLog(msg('log.engineChecking'), 'var(--accent-cyan)');
 
         try {
             const data = await fetchJson('/update-engine');
-            const today = I18n.formatDate(new Date());
+            const today = { $date: new Date().toISOString() };
             // versionDate chega como "AAAA-MM-DD"; em UTC pra não virar o dia anterior no fuso do Brasil.
-            const date = data.versionDate ? I18n.formatDate(new Date(`${data.versionDate}T00:00:00Z`), { utc: true }) : null;
-            let message;
+            const date = data.versionDate ? { $date: `${data.versionDate}T00:00:00Z`, utc: true } : null;
+            let parts;
             if (data.updated && date) {
-                message = t('log.engineUpdated', { date });
+                parts = msg('log.engineUpdated', { date });
             } else if (date) {
-                message = t('log.engineUpToDate', { date, today });
+                parts = msg('log.engineUpToDate', { date, today });
             } else {
-                message = t('log.engineChecked', { today });
+                parts = msg('log.engineChecked', { today });
             }
-            addLog(message, 'var(--accent-green)');
+            addLog(parts, 'var(--accent-green)');
         } catch (e) {
-            addLog(t('log.engineError', { message: e.message }), 'var(--danger)');
+            addLog(msg('log.engineError', { message: errorVar(e) }), 'var(--danger)');
         } finally {
             btnUpdateEngine.disabled = false;
             btnUpdateEngine.textContent = t('main.updateEngine');
@@ -395,9 +427,11 @@ document.addEventListener('DOMContentLoaded', () => {
             qualitySummary.textContent = t('quality.summary', totals) +
                 (counts.suspeitas ? t('quality.summarySuspicious', { count: counts.suspeitas }) : '') +
                 (counts.outras ? t('quality.summaryOthers', { count: counts.outras }) : '') + '.';
-            addLog(t('log.qualitySummary', totals) +
-                (counts.suspeitas ? t('log.qualitySuspicious', { count: counts.suspeitas }) : '') + '.',
-                weak || counts.suspeitas ? '#ffb86c' : 'var(--accent-green)');
+            addLog([
+                { key: 'log.qualitySummary', vars: totals },
+                ...(counts.suspeitas ? [{ key: 'log.qualitySuspicious', vars: { count: counts.suspeitas } }] : []),
+                { text: '.' }
+            ], weak || counts.suspeitas ? '#ffb86c' : 'var(--accent-green)');
         } catch (e) {
             qualitySummary.textContent = t('quality.failed', { message: e.message });
         } finally {

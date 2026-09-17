@@ -300,7 +300,7 @@ function checkForAppUpdate(win) {
 function createWindow () {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 520, // Caixinha retangular vertical (Estilo Widget)
+    height: 680, // Caixinha retangular vertical (Estilo Widget); abaixo disso o registro fica sem espaço
     icon: path.join(__dirname, 'assets/icon.png'), // Ícone da Janela
     backgroundColor: '#121212',
     title: 'DJ Flow - Rekordbox Companion',
@@ -328,8 +328,25 @@ function createWindow () {
   });
 }
 
+// Uma janela só: uma segunda instância não conseguiria abrir a porta 3891 (já
+// ocupada pela primeira) e todas as chamadas dela voltariam "não autorizado",
+// porque cairiam no servidor da primeira, que usa outra chave.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+}
+
 // Único ponto de entrada whenReady: inicializa cofre, servidor e janela em sequência
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) return;
+
   // 1. Criar a "Gaveta/Cofre DJ" na pasta Música do usuário
   cofrePath = path.join(app.getPath('music'), 'Cofre DJ Flow');
   if (!fs.existsSync(cofrePath)) {

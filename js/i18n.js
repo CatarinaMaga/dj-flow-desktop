@@ -27,7 +27,7 @@
             'main.updateEngine': '🔄 Atualizar Motor de Download',
             'main.updateEngineHint': 'Atualiza o yt-dlp caso os downloads parem de funcionar',
             'main.checking': '<span class="icon">⏳</span> Verificando...',
-            'main.helper': '<strong>Integração Auto-Import:</strong><br>Aponte seu Rekordbox para escanear a pasta:<br><span class="helper-path">Músicas / Cofre DJ Flow</span>',
+            'main.helper': '<strong>Rekordbox:</strong> importe a pasta <span class="helper-path">Músicas / Cofre DJ Flow</span>',
 
             'log.title': 'Registro de Atividade',
             'log.empty': 'Aguardando entrada de link...',
@@ -114,7 +114,7 @@
             'main.updateEngine': '🔄 Update Download Engine',
             'main.updateEngineHint': 'Updates yt-dlp in case downloads stop working',
             'main.checking': '<span class="icon">⏳</span> Checking...',
-            'main.helper': '<strong>Auto-Import:</strong><br>Point Rekordbox to scan this folder:<br><span class="helper-path">Music / Cofre DJ Flow</span>',
+            'main.helper': '<strong>Rekordbox:</strong> import the folder <span class="helper-path">Music / Cofre DJ Flow</span>',
 
             'log.title': 'Activity Log',
             'log.empty': 'Waiting for a link...',

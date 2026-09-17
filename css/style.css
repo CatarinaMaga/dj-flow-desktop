@@ -129,10 +129,12 @@ body.satellite-body {
     flex-direction: column;
     gap: 15px;
     flex-grow: 1;
+    min-height: 0;
 }
 
 /* INPUT SECTION */
 .input-container {
+    flex: none;
     background: var(--bg-panel);
     padding: 15px;
     border-radius: 12px;
@@ -281,13 +283,17 @@ body.satellite-body {
 }
 
 /* LOGS */
+/* O registro ocupa o espaço que sobra na janela (que tem altura fixa): só a
+   lista rola, e o título fica parado. Sem min-height: 0 o flex deixaria a
+   lista crescer além da janela, e o body (overflow: hidden) cortaria o final. */
 .log-container {
-    flex-grow: 1;
+    flex: 1 1 0;
+    min-height: 0;
     background: var(--bg-input);
     border-radius: 12px;
     padding: 15px;
     border: 1px solid var(--border-color);
-    overflow-y: auto;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
@@ -322,6 +328,11 @@ body.satellite-body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 6px;
+    overflow-wrap: anywhere;
 }
 
 #download-log li {
@@ -343,13 +354,14 @@ body.satellite-body {
 }
 
 .helper-text {
+    flex: none;
     font-size: 0.65rem;
     color: #555;
     text-align: center;
     background: #0a0a0b;
-    padding: 12px;
+    padding: 8px 12px;
     border-radius: 8px;
-    line-height: 1.6;
+    line-height: 1.5;
     border: 1px solid #111;
 }
 
