@@ -29,6 +29,8 @@ O detector do DJ Flow faz essa conferência automaticamente: abra o app e clique
 
 ## ❓ Por que meu pen drive não toca no CDJ?
 
+> Usa controladora (DDJ) com notebook? Aí quem lê o arquivo é o Rekordbox, não o aparelho: FLAC e ALAC funcionam normalmente, mas formatos de internet como Opus e WebM não tocam.
+
 As causas mais comuns:
 
 1. **Pen drive formatado em NTFS.** Os CDJs leem FAT32; alguns modelos mais novos também aceitam exFAT (confira o manual do seu).
@@ -55,6 +57,8 @@ Use o DJ Flow apenas com músicas que você tem direito de usar: compradas, lice
 - **Vault folder** at `Music\Cofre DJ Flow`, ready to import into Rekordbox.
 - **Always on top**, so it doesn't disappear behind Rekordbox.
 - **Persistent activity log**, automatic download-engine updates and new-version notices.
+
+**Playing on a controller instead of CDJs?** With a DDJ (or any controller) your laptop plays the file, so Rekordbox decides what works: FLAC and ALAC are fine, but web formats like Opus and WebM still won't play.
 
 **Is my track really 320 kbps?** The bitrate in the file properties is just a label. A file converted from a 128 kbps source still says "320" but has already lost its highs. A true 320 kbps MP3 reaches about 20 kHz, lossless files about 22 kHz, and YouTube audio (~128 kbps) usually cuts off near 16 kHz. Click **🎚️ Quality** in the app to check your whole vault.
 

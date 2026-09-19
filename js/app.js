@@ -202,17 +202,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Detecção de URL com debounce ───────────────────────────────────────────
+    // Aceita vários links colados de uma vez, separados por espaço ou quebra de linha.
+    function urlsDoCampo() {
+        return input.value.split(/\s+/).map(u => u.trim()).filter(u => u && isSupportedUrl(u));
+    }
+
     let timeout = null;
     input.addEventListener('input', () => {
-        const url = input.value.trim();
+        const urls = urlsDoCampo();
         clearTimeout(timeout);
 
-        if (!url || !isSupportedUrl(url)) {
+        if (urls.length === 0) {
             trackPreview.style.display = 'none';
             btnDownload.disabled = true;
+            btnDownload.innerHTML = t('main.download');
             return;
         }
 
+        if (urls.length > 1) {
+            trackPreview.style.display = 'none';
+            currentTrackInfo = null;
+            btnDownload.disabled = false;
+            btnDownload.innerHTML = t('main.downloadMany', { count: urls.length });
+            return;
+        }
+
+        btnDownload.innerHTML = t('main.download');
         timeout = setTimeout(fetchTrackInfo, 600);
     });
 
@@ -248,29 +263,122 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ── Download ───────────────────────────────────────────────────────────────
-    btnDownload.addEventListener('click', async () => {
-        const url = input.value.trim();
-        if (!url) return;
+    // ── Download (um link ou vários, playlists incluídas) ──────────────────────
+    const queueBox   = document.getElementById('queue');
+    const queueTitle = document.getElementById('queue-title');
+    const queueList  = document.getElementById('queue-list');
+    let pararFila = false;
 
+    function nomeDaFaixa(track) {
+        if (track.title) return track.title;
+        try {
+            const url = new URL(track.url);
+            return decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || track.url);
+        } catch (e) {
+            return track.url;
+        }
+    }
+
+    function desenharFila(tracks) {
+        queueList.innerHTML = '';
+        return tracks.map((track, i) => {
+            const li = document.createElement('li');
+            li.className = 'queue-item';
+            const nome = document.createElement('span');
+            nome.className = 'queue-name';
+            nome.textContent = `${i + 1}. ${nomeDaFaixa(track)}`;
+            nome.title = track.url;
+            const status = document.createElement('span');
+            status.className = 'queue-status';
+            status.textContent = t('queue.pending');
+            li.append(nome, status);
+            queueList.appendChild(li);
+            return li;
+        });
+    }
+
+    function marcarItem(li, estado) {
+        li.className = `queue-item ${estado === 'pending' ? '' : estado}`;
+        li.querySelector('.queue-status').textContent = t(`queue.${
+            { baixando: 'downloading', pronto: 'done', erro: 'error', cancelado: 'skipped' }[estado] || 'pending'
+        }`);
+    }
+
+    btnDownload.addEventListener('click', async () => {
+        const urls = urlsDoCampo();
+        if (urls.length === 0) return;
+
+        const titulo = currentTrackInfo?.title;
         input.value = '';
         btnDownload.disabled = true;
         trackPreview.style.display = 'none';
         btnDownload.innerHTML = t('main.downloading');
+        pararFila = false;
 
-        addLog(msg('log.downloadStart'), 'var(--accent-purple)');
-
-        try {
-            await fetchJson('/download/disk', { url });
-            addLog(msg('log.saved', { title: currentTrackInfo?.title || { $t: 'log.fileFallback' } }), 'var(--accent-green)');
-            currentTrackInfo = null;
-        } catch (e) {
-            const message = e.i18nKey === 'errors.bad_format' ? { $t: 'errors.engine_unreachable' } : errorVar(e);
-            addLog(msg('log.error', { message }), 'var(--danger)');
-        } finally {
-            btnDownload.disabled = true;
-            btnDownload.innerHTML = t('main.download');
+        // Um link pode ser uma playlist ou um álbum inteiro: o servidor expande.
+        // Se a expansão falhar em um link, ele entra na fila assim mesmo e o erro
+        // aparece só naquele item, sem derrubar os outros.
+        const tracks = [];
+        if (urls.length === 1 && titulo) {
+            tracks.push({ url: urls[0], title: titulo });
+        } else {
+            addLog(msg('log.expanding'), 'var(--accent-cyan)');
+            for (const url of urls) {
+                try {
+                    const data = await fetchJson('/info/expand', { url });
+                    tracks.push(...data.tracks);
+                } catch (e) {
+                    console.warn('Falha ao expandir', url, e);
+                    tracks.push({ url, title: '' });
+                }
+            }
         }
+
+        const items = desenharFila(tracks);
+        queueBox.hidden = tracks.length < 2;
+        addLog(tracks.length > 1 ? msg('log.queueStart', { count: tracks.length }) : msg('log.downloadStart'), 'var(--accent-purple)');
+
+        let baixadas = 0;
+        let falhas = 0;
+        for (let i = 0; i < tracks.length; i++) {
+            if (pararFila) {
+                marcarItem(items[i], 'cancelado');
+                continue;
+            }
+            queueTitle.textContent = t('queue.titleProgress', { current: i + 1, total: tracks.length });
+            marcarItem(items[i], 'baixando');
+            items[i].scrollIntoView({ block: 'nearest' });
+            try {
+                await fetchJson('/download/disk', { url: tracks[i].url });
+                marcarItem(items[i], 'pronto');
+                baixadas++;
+                if (tracks.length === 1) {
+                    addLog(msg('log.saved', { title: tracks[i].title || { $t: 'log.fileFallback' } }), 'var(--accent-green)');
+                }
+            } catch (e) {
+                marcarItem(items[i], 'erro');
+                falhas++;
+                const message = e.i18nKey === 'errors.bad_format' ? { $t: 'errors.engine_unreachable' } : errorVar(e);
+                addLog(msg('log.error', { message }), 'var(--danger)');
+            }
+        }
+
+        if (tracks.length > 1) {
+            const restantes = tracks.length - baixadas - falhas;
+            addLog(pararFila
+                ? msg('log.queueStopped', { done: baixadas, left: restantes })
+                : msg('log.queueDone', { done: baixadas, failed: falhas }),
+                falhas ? '#ffb86c' : 'var(--accent-green)');
+        }
+
+        queueTitle.textContent = t('queue.title');
+        currentTrackInfo = null;
+        btnDownload.disabled = true;
+        btnDownload.innerHTML = t('main.download');
+    });
+
+    document.getElementById('btn-queue-stop').addEventListener('click', () => {
+        pararFila = true;
     });
 
     // ── Abrir pasta ────────────────────────────────────────────────────────────

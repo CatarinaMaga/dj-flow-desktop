@@ -65,7 +65,7 @@
                 <span class="badge">Archive.org</span>
             </div>
             <div class="input-wrapper">
-                <input type="text" id="yt-link-input" placeholder="Cole a URL aqui..." data-i18n-placeholder="main.placeholder" autocomplete="off">
+                <input type="text" id="yt-link-input" placeholder="Cole um ou vários links..." data-i18n-placeholder="main.placeholder" autocomplete="off">
             </div>
 
             <!-- TRACK PREVIEW (Hidden by default) -->
@@ -80,6 +80,14 @@
             <button id="btn-download" class="btn-primary" disabled data-i18n-html="main.download">
                 <span class="icon">⬇</span> Baixar para o Cofre
             </button>
+
+            <div id="queue" class="queue" hidden>
+                <div class="queue-head">
+                    <span id="queue-title" data-i18n="queue.title">Fila de download</span>
+                    <button id="btn-queue-stop" class="queue-stop" data-i18n="queue.stop">Parar</button>
+                </div>
+                <ul id="queue-list" class="queue-list"></ul>
+            </div>
             <div class="btn-row">
                 <button id="btn-folder" class="btn-secondary" data-i18n="main.openVault">📁 Abrir Cofre</button>
                 <button id="btn-quality" class="btn-secondary" title="Confere a qualidade real de cada faixa do Cofre" data-i18n="main.quality" data-i18n-title="main.qualityHint">🎚️ Qualidade</button>

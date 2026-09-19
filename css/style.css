@@ -271,6 +271,86 @@ body.satellite-body {
     border-color: #555;
 }
 
+/* ── FILA DE DOWNLOAD ───────────────────────────────────────────────────── */
+.queue {
+    margin-top: 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.queue[hidden] {
+    display: none;
+}
+
+.queue-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.queue-stop {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: 6px;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.queue-stop:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.queue-list {
+    list-style: none;
+    overflow-y: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.7rem;
+}
+
+.queue-item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    color: var(--text-muted);
+}
+
+.queue-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.queue-status {
+    flex: none;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.queue-item.baixando .queue-status { color: var(--accent-cyan); }
+.queue-item.baixando .queue-name { color: var(--text-main); }
+.queue-item.pronto .queue-status { color: var(--success); }
+.queue-item.erro .queue-status { color: var(--danger); }
+
 .btn-row {
     display: flex;
     gap: 8px;

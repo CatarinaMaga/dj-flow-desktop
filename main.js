@@ -147,6 +147,45 @@ serverApp.get('/info/youtube', async (req, res) => {
     }
 });
 
+// Endpoint: expandir um link em faixas. Um link de playlist/álbum vira vários
+// itens; um link de faixa única devolve ele mesmo. Não baixa nada, só lista.
+serverApp.get('/info/expand', async (req, res) => {
+    const rawUrl = req.query.url;
+    if (!rawUrl || !isSupportedUrl(rawUrl)) {
+        return res.status(400).json({ code: 'invalid_url', error: 'URL inválida ou fonte não suportada.' });
+    }
+
+    try {
+        const binPath = path.join(__dirname, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp.exe');
+        // exec() em vez da chamada normal: uma playlist devolve uma linha JSON por
+        // faixa, e a versão normal tenta interpretar tudo como um único JSON e falha.
+        const resultado = await youtubedl.exec(rawUrl, {
+            dumpJson: true,
+            flatPlaylist: true,
+            skipDownload: true,
+            noWarnings: true,
+            noCheckCertificates: true
+        }, { executablePath: binPath });
+
+        const linhas = String(resultado.stdout || '').split('\n').map(l => l.trim()).filter(Boolean);
+        const faixas = [];
+        for (const linha of linhas) {
+            let item;
+            try { item = JSON.parse(linha); } catch (e) { continue; }
+            const url = item.webpage_url || item.original_url || item.url ||
+                (item.id ? `https://www.youtube.com/watch?v=${item.id}` : null);
+            if (!url || !isSupportedUrl(url)) continue;
+            faixas.push({ url, title: item.title || '' });
+        }
+
+        if (faixas.length === 0) faixas.push({ url: rawUrl, title: '' });
+        res.json({ success: true, tracks: faixas });
+    } catch (err) {
+        console.error('Erro ao expandir link:', err);
+        res.status(500).json({ code: 'track_unavailable', error: 'Faixa indisponível ou link inválido.' });
+    }
+});
+
 // Endpoint para ajudar o usuário a abrir a pasta visualmente no File Explorer
 serverApp.get('/open-folder', (req, res) => {
     if (!cofrePath) {
