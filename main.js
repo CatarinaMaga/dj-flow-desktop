@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -336,6 +336,35 @@ function checkForAppUpdate(win) {
     req.on('timeout', () => req.destroy());
 }
 
+// Menu do botão direito: o Electron não traz um por padrão, então sem isto só
+// funcionariam os atalhos de teclado (Ctrl+C / Ctrl+V).
+const MENU_LABELS = {
+  pt: { undo: 'Desfazer', redo: 'Refazer', cut: 'Recortar', copy: 'Copiar', paste: 'Colar', selectAll: 'Selecionar tudo' },
+  en: { undo: 'Undo', redo: 'Redo', cut: 'Cut', copy: 'Copy', paste: 'Paste', selectAll: 'Select all' }
+};
+let uiLang = 'pt';
+
+ipcMain.on('ui-language', (event, lang) => {
+  if (MENU_LABELS[lang]) uiLang = lang;
+});
+
+function buildContextMenu(params) {
+  const labels = MENU_LABELS[uiLang];
+  const items = [];
+
+  if (params.isEditable) {
+    items.push({ role: 'undo', label: labels.undo }, { role: 'redo', label: labels.redo }, { type: 'separator' });
+    items.push({ role: 'cut', label: labels.cut, enabled: params.selectionText.length > 0 });
+  }
+  if (params.isEditable || params.selectionText.length > 0) {
+    items.push({ role: 'copy', label: labels.copy, enabled: params.selectionText.length > 0 });
+  }
+  if (params.isEditable) {
+    items.push({ role: 'paste', label: labels.paste }, { type: 'separator' }, { role: 'selectAll', label: labels.selectAll });
+  }
+  return items.length ? Menu.buildFromTemplate(items) : null;
+}
+
 function createWindow () {
   mainWindow = new BrowserWindow({
     width: 400,
@@ -360,6 +389,11 @@ function createWindow () {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
       shell.openExternal(url);
       return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('context-menu', (event, params) => {
+      const menu = buildContextMenu(params);
+      if (menu) menu.popup({ window: mainWindow, x: params.x, y: params.y });
   });
 
   mainWindow.webContents.once('did-finish-load', () => {

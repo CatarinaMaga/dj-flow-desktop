@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('app-version').textContent = `v${window.djflow.appVersion}`;
     }
 
+    // O menu do botão direito é montado no processo principal e precisa saber o idioma.
+    if (window.djflow) window.djflow.reportLanguage(I18n.lang);
+
     const langSelect = document.getElementById('lang-select');
     langSelect.value = I18n.lang;
     langSelect.addEventListener('change', () => {
