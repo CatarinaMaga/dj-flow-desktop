@@ -17,7 +17,8 @@
             'terms.reject': '❌ Não Aceito — Fechar',
 
             'main.linkLabel': 'Link da Faixa:',
-            'main.placeholder': 'Cole um ou vários links...',
+            'main.placeholder': 'Cole um link ou vários separados por espaço...',
+            'main.linkHint': 'Vários links de uma vez? Separe cada um com um espaço. O link de uma playlist ou álbum também funciona sozinho.',
             'main.downloadMany': '<span class="icon">⬇</span> Baixar {count} faixas',
             'main.linksDetected': '{count} links detectados',
             'queue.title': 'Fila de download',
@@ -118,7 +119,8 @@
             'terms.reject': '❌ I Don\'t Accept — Close',
 
             'main.linkLabel': 'Track Link:',
-            'main.placeholder': 'Paste one or more links...',
+            'main.placeholder': 'Paste one link, or several separated by spaces...',
+            'main.linkHint': 'Several links at once? Separate each one with a space. A playlist or album link also works on its own.',
             'main.downloadMany': '<span class="icon">⬇</span> Download {count} tracks',
             'main.linksDetected': '{count} links detected',
             'queue.title': 'Download queue',

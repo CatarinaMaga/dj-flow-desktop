@@ -21,3 +21,6 @@ mobile/
 .DS_Store
 .env
 scratch/
+
+# Editor
+.vscode/

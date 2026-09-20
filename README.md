@@ -9,6 +9,7 @@ Feito por **Catarina Magalhães**, DJ e desenvolvedora de sistemas e aplicativos
 ## ✨ Funções
 
 - **Português e inglês:** o app escolhe o idioma do Windows automaticamente, e dá pra trocar no seletor PT/EN no topo.
+- **Download em lote:** cole vários links de uma vez, **separados por um espaço**, e o app baixa um atrás do outro mostrando a fila. O link de uma playlist ou álbum inteiro também funciona sozinho.
 - **Detector de qualidade:** analisa os agudos de cada faixa do Cofre e mostra se ela é de qualidade Alta, Média, Baixa ou Muito baixa. Também avisa quando um arquivo diz ter 320 kbps ou ser sem perdas, mas foi convertido de uma fonte fraca.
 - **Cofre DJ Flow:** pasta dedicada em `Músicas\Cofre DJ Flow`, pronta para importar no Rekordbox.
 - **Sempre visível:** a janela não some quando você clica no Rekordbox.
@@ -53,6 +54,7 @@ Use o DJ Flow apenas com músicas que você tem direito de usar: compradas, lice
 **DJ Flow** is a free Windows companion app for DJs who use **Rekordbox**. It stays on top of Rekordbox, keeps your tracks in a dedicated folder (the **Cofre DJ Flow** vault) and tells you whether each track has enough quality for a club sound system. The interface is available in **English and Portuguese**: it follows your Windows language, and you can switch it with the PT/EN selector.
 
 **Features**
+- **Batch downloads:** paste several links at once, **separated by a space**, and the app downloads them one after another showing the queue. A whole playlist or album link also works on its own.
 - **Quality detector:** analyzes the real high-frequency cutoff of every track in the vault and rates it High, Medium, Low or Very low. It also flags files that claim to be 320 kbps or lossless but were transcoded from a weak source.
 - **Vault folder** at `Music\Cofre DJ Flow`, ready to import into Rekordbox.
 - **Always on top**, so it doesn't disappear behind Rekordbox.

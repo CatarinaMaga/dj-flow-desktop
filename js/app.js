@@ -205,9 +205,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Detecção de URL com debounce ───────────────────────────────────────────
-    // Aceita vários links colados de uma vez, separados por espaço ou quebra de linha.
+    // Aceita vários links colados de uma vez, separados por espaço, quebra de linha,
+    // vírgula, ponto e vírgula ou underline — e até colados um no outro, porque o
+    // campo é de uma linha só e o Windows junta as linhas ao colar uma lista.
     function urlsDoCampo() {
-        return input.value.split(/\s+/).map(u => u.trim()).filter(u => u && isSupportedUrl(u));
+        const encontrados = input.value.match(/https?:\/\/\S+?(?=https?:\/\/|\s|$)/g) || [];
+        return encontrados
+            .map(u => u.replace(/[_,;|>)\]}]+$/, '').trim())
+            .filter(u => isSupportedUrl(u));
     }
 
     let timeout = null;
