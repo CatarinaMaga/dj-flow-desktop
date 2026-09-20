@@ -123,6 +123,92 @@
         return { level, suspicious, lossless, cutoffHz, avgKbps };
     }
 
+    // O tamanho do arquivo não é só áudio: capa embutida e etiquetas entram na
+    // conta e inflam a taxa de bits estimada — uma capa de 2 MB faz um MP3 de
+    // 320 kbps parecer ter 450. Aqui descontamos o que não é som. Formato
+    // desconhecido ou estrutura inesperada devolve o arquivo inteiro.
+    function audioByteLength(buffer, ext) {
+        const total = buffer.byteLength;
+        const view = new DataView(buffer);
+        const texto = (pos, tamanho) => {
+            let s = '';
+            for (let i = 0; i < tamanho; i++) s += String.fromCharCode(view.getUint8(pos + i));
+            return s;
+        };
+
+        function mp3Bytes() {
+            let inicio = 0;
+            let fim = total;
+            if (texto(0, 3) === 'ID3') {
+                // o tamanho do ID3v2 vem em 4 bytes "syncsafe" (7 bits cada)
+                const tamanho = ((view.getUint8(6) & 0x7f) << 21) | ((view.getUint8(7) & 0x7f) << 14) |
+                                ((view.getUint8(8) & 0x7f) << 7) | (view.getUint8(9) & 0x7f);
+                const rodape = (view.getUint8(5) & 0x10) ? 10 : 0;
+                inicio = 10 + tamanho + rodape;
+            }
+            if (fim >= 128 && texto(fim - 128, 3) === 'TAG') fim -= 128;
+            if (fim >= 32 && texto(fim - 32, 8) === 'APETAGEX') fim -= view.getUint32(fim - 20, true);
+            return fim - inicio;
+        }
+
+        function flacBytes() {
+            if (texto(0, 4) !== 'fLaC') return total;
+            let pos = 4;
+            while (pos + 4 <= total) {
+                const flags = view.getUint8(pos);
+                const tamanho = (view.getUint8(pos + 1) << 16) | (view.getUint8(pos + 2) << 8) | view.getUint8(pos + 3);
+                pos += 4 + tamanho;
+                if (flags & 0x80) break; // último bloco de metadados
+            }
+            return total - pos;
+        }
+
+        // Em MP4/M4A o som fica na caixa 'mdat'; capa e índices ficam fora dela.
+        function mp4Bytes() {
+            let pos = 0;
+            let mdat = 0;
+            while (pos + 8 <= total) {
+                let tamanho = view.getUint32(pos);
+                const tipo = texto(pos + 4, 4);
+                let cabecalho = 8;
+                if (tamanho === 1) {
+                    tamanho = view.getUint32(pos + 8) * 4294967296 + view.getUint32(pos + 12);
+                    cabecalho = 16;
+                } else if (tamanho === 0) {
+                    tamanho = total - pos;
+                }
+                if (tamanho < cabecalho) break;
+                if (tipo === 'mdat') mdat += tamanho - cabecalho;
+                pos += tamanho;
+            }
+            return mdat;
+        }
+
+        function wavBytes() {
+            if (texto(0, 4) !== 'RIFF' || texto(8, 4) !== 'WAVE') return total;
+            let pos = 12;
+            while (pos + 8 <= total) {
+                const tipo = texto(pos, 4);
+                const tamanho = view.getUint32(pos + 4, true);
+                if (tipo === 'data') return Math.min(tamanho, total - pos - 8);
+                pos += 8 + tamanho + (tamanho % 2);
+            }
+            return total;
+        }
+
+        let bytes = 0;
+        try {
+            if (ext === 'mp3') bytes = mp3Bytes();
+            else if (ext === 'flac') bytes = flacBytes();
+            else if (ext === 'm4a' || ext === 'mp4') bytes = mp4Bytes();
+            else if (ext === 'wav') bytes = wavBytes();
+        } catch (e) {
+            bytes = 0;
+        }
+        // Resultado fora do razoável (arquivo estranho) volta pro tamanho cheio.
+        return bytes > 0 && bytes <= total ? bytes : total;
+    }
+
     async function analyzeArrayBuffer(arrayBuffer) {
         const ctx = new OfflineAudioContext(1, 1, 48000);
         const audio = await ctx.decodeAudioData(arrayBuffer);
@@ -134,7 +220,7 @@
         return { cutoffHz: estimateCutoffHz(mono, audio.sampleRate), duration: audio.duration };
     }
 
-    const api = { estimateCutoffHz, classify, analyzeArrayBuffer };
+    const api = { estimateCutoffHz, classify, analyzeArrayBuffer, audioByteLength };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.QualityAnalyzer = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -474,8 +474,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const response = await fetch(url);
         if (!response.ok) throw new Error('arquivo indisponível');
-        const { cutoffHz } = await QualityAnalyzer.analyzeArrayBuffer(await response.arrayBuffer());
-        const avgKbps = (file.size * 8) / duration / 1000;
+        const buffer = await response.arrayBuffer();
+        // A taxa sai dos bytes de som, sem capa nem etiquetas. Precisa ser medida
+        // antes de decodificar: decodeAudioData esvazia o buffer.
+        const audioBytes = QualityAnalyzer.audioByteLength(buffer, file.ext);
+        const { cutoffHz } = await QualityAnalyzer.analyzeArrayBuffer(buffer);
+        const avgKbps = (audioBytes * 8) / duration / 1000;
         const result = QualityAnalyzer.classify({ cutoffHz, avgKbps, ext: file.ext });
 
         let advice;
