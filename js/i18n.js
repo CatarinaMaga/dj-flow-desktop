@@ -19,6 +19,26 @@
             'main.linkLabel': 'Link da Faixa:',
             'main.placeholder': 'Cole um link ou vários separados por espaço...',
             'main.linkHint': 'Vários links de uma vez? Separe cada um com um espaço. O link de uma playlist ou álbum também funciona sozinho.',
+
+            // Painel da criadora (Ctrl+Shift+D)
+            'painel.titulo': 'Painel da criadora',
+            'painel.tituloLinha': 'Downloads acumulados',
+            'painel.tituloBarras': 'Downloads por versão',
+            'painel.instalador': 'instalador',
+            'painel.portatil': 'portátil',
+            'painel.cartaoTotal': 'downloads no total',
+            'painel.cartaoSemana': 'nos últimos 7 dias',
+            'painel.cartaoTop': 'versão mais baixada',
+            'painel.cartaoUltima': 'última publicada',
+            'painel.downloads': '{n} downloads',
+            'painel.semBase': 'ainda sem 7 dias de histórico',
+            'painel.notaLinha': 'A curva é montada com uma foto por dia, guardada neste computador.',
+            'painel.notaLinhaCurta': 'A curva começa hoje: o GitHub só informa o total acumulado, então o painel guarda uma foto por dia daqui pra frente.',
+            'painel.atualizado': 'atualizado às {hora}',
+            'painel.carregando': 'consultando o GitHub...',
+            'painel.recarregar': 'Atualizar',
+            'painel.erro': 'não deu pra consultar o GitHub: {motivo}',
+            'painel.erroLimite': 'limite de consultas do GitHub atingido, tente daqui a pouco',
             'main.downloadMany': '<span class="icon">⬇</span> Baixar {count} faixas',
             'main.linksDetected': '{count} links detectados',
             'queue.title': 'Fila de download',
@@ -121,6 +141,26 @@
             'main.linkLabel': 'Track Link:',
             'main.placeholder': 'Paste one link, or several separated by spaces...',
             'main.linkHint': 'Several links at once? Separate each one with a space. A playlist or album link also works on its own.',
+
+            // Creator dashboard (Ctrl+Shift+D)
+            'painel.titulo': 'Creator dashboard',
+            'painel.tituloLinha': 'Cumulative downloads',
+            'painel.tituloBarras': 'Downloads per version',
+            'painel.instalador': 'installer',
+            'painel.portatil': 'portable',
+            'painel.cartaoTotal': 'downloads in total',
+            'painel.cartaoSemana': 'in the last 7 days',
+            'painel.cartaoTop': 'most downloaded version',
+            'painel.cartaoUltima': 'latest release',
+            'painel.downloads': '{n} downloads',
+            'painel.semBase': 'less than 7 days of history so far',
+            'painel.notaLinha': 'The curve is built from one snapshot a day, kept on this computer.',
+            'painel.notaLinhaCurta': 'The curve starts today: GitHub only reports running totals, so the dashboard saves one snapshot a day from now on.',
+            'painel.atualizado': 'updated at {hora}',
+            'painel.carregando': 'asking GitHub...',
+            'painel.recarregar': 'Refresh',
+            'painel.erro': 'could not reach GitHub: {motivo}',
+            'painel.erroLimite': 'GitHub rate limit reached, try again shortly',
             'main.downloadMany': '<span class="icon">⬇</span> Download {count} tracks',
             'main.linksDetected': '{count} links detected',
             'queue.title': 'Download queue',
@@ -245,10 +285,16 @@
         localStorage.setItem(STORAGE_KEY, newLang);
     }
 
-    function formatDate(date, { utc = false } = {}) {
-        const options = lang === 'pt'
-            ? { day: '2-digit', month: '2-digit', year: 'numeric' }
-            : { month: 'short', day: 'numeric', year: 'numeric' };
+    function formatDate(date, { utc = false, curto = false } = {}) {
+        // "curto" é usado nos eixos dos gráficos, onde o ano não cabe
+        let options;
+        if (curto) {
+            options = lang === 'pt' ? { day: '2-digit', month: '2-digit' } : { month: 'short', day: 'numeric' };
+        } else {
+            options = lang === 'pt'
+                ? { day: '2-digit', month: '2-digit', year: 'numeric' }
+                : { month: 'short', day: 'numeric', year: 'numeric' };
+        }
         if (utc) options.timeZone = 'UTC';
         return new Intl.DateTimeFormat(locale, options).format(date);
     }
