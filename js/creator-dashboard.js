@@ -10,9 +10,12 @@
     const { t } = root.I18n;
 
     const REPO_PADRAO = 'CatarinaMaga/dj-flow-desktop';
+    const METRICAS_PADRAO = 'https://djflow-pro.vercel.app/api/metricas';
     const CHAVE_HISTORICO = 'djflow_painel_historico_v1';
     const CHAVE_TOKEN = 'djflow_painel_token_github';
     const CHAVE_REPO = 'djflow_painel_repo';
+    const CHAVE_METRICAS_URL = 'djflow_painel_metricas_url';
+    const CHAVE_METRICAS_TOKEN = 'djflow_painel_metricas_token';
     const MAX_FOTOS = 400;
 
     let overlay = null;
@@ -68,6 +71,24 @@
         });
         versoes.sort((a, b) => String(a.publicada).localeCompare(String(b.publicada)));
         return versoes;
+    }
+
+    // Números da landing: vêm do contador da própria página, na Vercel. O token
+    // fica só neste computador — o código não carrega segredo nenhum.
+    async function buscarLanding() {
+        const token = localStorage.getItem(CHAVE_METRICAS_TOKEN);
+        if (!token) return { estado: 'sem-token' };
+        const base = localStorage.getItem(CHAVE_METRICAS_URL) || METRICAS_PADRAO;
+        try {
+            const res = await fetch(`${base}?dias=30&token=${encodeURIComponent(token)}`);
+            if (res.status === 401) return { estado: 'token-invalido' };
+            if (!res.ok) return { estado: 'erro', motivo: `HTTP ${res.status}` };
+            const dados = await res.json();
+            if (!dados.configurado) return { estado: 'sem-banco' };
+            return { estado: 'ok', dados };
+        } catch (e) {
+            return { estado: 'erro', motivo: e.message };
+        }
     }
 
     // ── desenho dos gráficos ─────────────────────────────────────────────────
@@ -148,6 +169,35 @@
         });
     }
 
+    // duas séries no mesmo gráfico: quem visitou e quem baixou
+    function desenharLinhaDupla(canvas, series) {
+        const { ctx, largura, altura } = prepararCanvas(canvas);
+        const margem = { cima: 16, baixo: 28, esquerda: 44, direita: 16 };
+        const dias = series[0].pontos;
+        if (!dias || dias.length === 0) return;
+
+        const maximo = Math.max(4, ...series.flatMap(s => s.pontos.map(p => p.valor)));
+        const rotulos = dias.map(p => I18n.formatDate(new Date(p.data + 'T12:00:00'), { curto: true }));
+        desenharEixos(ctx, largura, altura, margem, maximo, rotulos);
+
+        const x = (i) => margem.esquerda + ((largura - margem.esquerda - margem.direita) * i) / Math.max(1, dias.length - 1);
+        const y = (v) => altura - margem.baixo - ((altura - margem.cima - margem.baixo) * v) / maximo;
+
+        series.forEach(serie => {
+            ctx.beginPath();
+            serie.pontos.forEach((p, i) => (i === 0 ? ctx.moveTo(x(i), y(p.valor)) : ctx.lineTo(x(i), y(p.valor))));
+            ctx.strokeStyle = serie.cor;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.fillStyle = serie.cor;
+            serie.pontos.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(x(i), y(p.valor), 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        });
+    }
+
     function desenharBarras(canvas, itens) {
         const { ctx, largura, altura } = prepararCanvas(canvas);
         const margem = { cima: 16, baixo: 28, esquerda: 44, direita: 16 };
@@ -199,6 +249,20 @@
                     </div>
                     <canvas id="painel-barras"></canvas>
                 </div>
+                <div class="painel-grafico">
+                    <div class="painel-legenda">
+                        <span id="painel-lbl-landing"></span>
+                        <span class="painel-chave"><i class="ponto verde"></i><span id="painel-lbl-visitantes"></span></span>
+                        <span class="painel-chave"><i class="ponto azul"></i><span id="painel-lbl-baixaram"></span></span>
+                    </div>
+                    <div id="painel-landing-cartoes" class="painel-cartoes painel-cartoes-3"></div>
+                    <canvas id="painel-landing"></canvas>
+                    <p id="painel-landing-nota" class="painel-nota"></p>
+                    <div id="painel-landing-form" class="painel-conectar" hidden>
+                        <input id="painel-landing-token" type="password" autocomplete="off" />
+                        <button id="painel-landing-salvar" class="painel-botao"></button>
+                    </div>
+                </div>
                 <div class="painel-rodape">
                     <span id="painel-atualizado"></span>
                     <button id="painel-recarregar" class="painel-botao"></button>
@@ -208,6 +272,14 @@
 
         el.querySelector('#painel-fechar').addEventListener('click', fechar);
         el.querySelector('#painel-recarregar').addEventListener('click', () => carregar(true));
+        el.querySelector('#painel-landing-salvar').addEventListener('click', () => {
+            const campo = el.querySelector('#painel-landing-token');
+            const valor = campo.value.trim();
+            if (valor) localStorage.setItem(CHAVE_METRICAS_TOKEN, valor);
+            else localStorage.removeItem(CHAVE_METRICAS_TOKEN);
+            campo.value = '';
+            carregar(true);
+        });
         el.addEventListener('click', (e) => { if (e.target === el) fechar(); });
         return el;
     }
@@ -219,6 +291,57 @@
         overlay.querySelector('#painel-lbl-inst').textContent = t('painel.instalador');
         overlay.querySelector('#painel-lbl-port').textContent = t('painel.portatil');
         overlay.querySelector('#painel-recarregar').textContent = t('painel.recarregar');
+        overlay.querySelector('#painel-lbl-landing').textContent = t('painel.tituloLanding');
+        overlay.querySelector('#painel-lbl-visitantes').textContent = t('painel.visitantes');
+        overlay.querySelector('#painel-lbl-baixaram').textContent = t('painel.baixaram');
+        overlay.querySelector('#painel-landing-token').placeholder = t('painel.tokenPlaceholder');
+        overlay.querySelector('#painel-landing-salvar').textContent = t('painel.salvar');
+    }
+
+    function preencherLanding(resposta) {
+        const cartoes = overlay.querySelector('#painel-landing-cartoes');
+        const nota = overlay.querySelector('#painel-landing-nota');
+        const form = overlay.querySelector('#painel-landing-form');
+        const canvas = overlay.querySelector('#painel-landing');
+        cartoes.innerHTML = '';
+
+        if (resposta.estado !== 'ok') {
+            canvas.style.display = 'none';
+            form.hidden = resposta.estado === 'sem-banco';
+            nota.textContent = {
+                'sem-token': t('painel.landingSemToken'),
+                'token-invalido': t('painel.landingTokenInvalido'),
+                'sem-banco': t('painel.landingSemBanco'),
+                'erro': t('painel.landingErro', { motivo: resposta.motivo || '' })
+            }[resposta.estado];
+            return;
+        }
+
+        canvas.style.display = 'block';
+        form.hidden = true;
+        const serie = resposta.dados.serie;
+        const hoje = serie[serie.length - 1] || { visitas: 0, visitantes: 0, baixaram: 0 };
+        const sete = serie.slice(-7);
+        const soma = (campo) => sete.reduce((s, d) => s + d[campo], 0);
+
+        cartoes.append(
+            cartao(t('painel.cartaoVisitantesHoje'), I18n.formatNumber(hoje.visitantes),
+                t('painel.deVisitas', { n: I18n.formatNumber(hoje.visitas) })),
+            cartao(t('painel.cartaoVisitantes7'), I18n.formatNumber(soma('visitantes'))),
+            cartao(t('painel.cartaoBaixaram7'), I18n.formatNumber(soma('baixaram')))
+        );
+
+        desenharLinhaDupla(canvas, [
+            { cor: '#50dc8c', pontos: serie.map(d => ({ data: d.data, valor: d.visitantes })) },
+            { cor: '#7aa2f7', pontos: serie.map(d => ({ data: d.data, valor: d.baixaram })) }
+        ]);
+
+        const origens = Object.entries(resposta.dados.origensHoje || {})
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .map(([nome, n]) => `${nome} (${n})`)
+            .join(' · ');
+        nota.textContent = origens ? t('painel.origensHoje', { lista: origens }) : t('painel.landingOk');
     }
 
     function cartao(rotulo, valor, detalhe) {
@@ -280,6 +403,7 @@
         carregando = true;
         const rodape = overlay.querySelector('#painel-atualizado');
         rodape.textContent = t('painel.carregando');
+        buscarLanding().then(preencherLanding);
         try {
             const versoes = await buscarReleases();
             const total = versoes.reduce((s, v) => s + v.total, 0);
@@ -329,6 +453,12 @@
         definirRepo(repo) {
             if (repo) localStorage.setItem(CHAVE_REPO, repo);
             else localStorage.removeItem(CHAVE_REPO);
+        },
+        // token do contador da landing; também dá pra digitar dentro do painel
+        definirMetricas(token, url) {
+            if (token) localStorage.setItem(CHAVE_METRICAS_TOKEN, token);
+            else localStorage.removeItem(CHAVE_METRICAS_TOKEN);
+            if (url) localStorage.setItem(CHAVE_METRICAS_URL, url);
         },
         exportarHistorico: lerHistorico
     };

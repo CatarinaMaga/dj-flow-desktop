@@ -839,3 +839,33 @@ body.satellite-body {
 .painel-botao:hover {
     border-color: var(--accent-purple);
 }
+
+.painel-cartoes-3 {
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 8px;
+}
+
+.painel-cartoes-3 .painel-cartao strong { font-size: 20px; }
+
+.painel-chave .ponto.verde { background: #50dc8c; }
+
+.painel-conectar {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.painel-conectar input {
+    flex: 1;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-main);
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.painel-conectar input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+}
