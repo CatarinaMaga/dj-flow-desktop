@@ -197,8 +197,27 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStoredLogs();
 
     // ── Aviso de nova versão do DJ Flow disponível ─────────────────────────────
+    // A linha no registro guarda o histórico; a faixa no topo é o que a pessoa
+    // realmente vê. Fechar a faixa vale só para esta sessão: na próxima abertura
+    // ela volta, porque continuar numa versão velha costuma ser descuido.
+    const updateBanner = document.getElementById('update-banner');
+
+    function mostrarFaixaDeVersao(info) {
+        if (!info || !/^https:\/\//.test(info.url || '')) return;
+        document.getElementById('update-banner-text').textContent = t('update.banner', { version: info.version });
+        const link = document.getElementById('update-banner-link');
+        link.href = info.url;
+        link.textContent = t('update.action');
+        updateBanner.hidden = false;
+    }
+
+    document.getElementById('update-banner-close').addEventListener('click', () => {
+        updateBanner.hidden = true;
+    });
+
     if (window.djflow) {
         window.djflow.onUpdateAvailable((info) => {
+            mostrarFaixaDeVersao(info);
             addLog(msg('log.updateAvailable', { version: info.version }), 'var(--accent-cyan)',
                 { url: info.url, labelKey: 'log.updateDownload' });
         });
