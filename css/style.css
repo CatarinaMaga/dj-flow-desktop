@@ -855,6 +855,11 @@ body.satellite-body {
     margin-top: 8px;
 }
 
+/* display:flex vence o atributo hidden do navegador; precisa ser explícito */
+.painel-conectar[hidden] {
+    display: none;
+}
+
 .painel-conectar input {
     flex: 1;
     background: var(--bg-dark);
