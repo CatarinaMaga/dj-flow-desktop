@@ -523,7 +523,11 @@
     // Conta a visita no próprio servidor da landing: sem cookie, sem guardar IP.
     // Se a chamada falhar, a página não muda em nada.
     addEventListener('load', function () {
-      try { fetch('/api/visita', { method: 'POST', keepalive: true }).catch(function () {}); } catch (e) {}
+      try {
+        var de = new URLSearchParams(location.search).get('de');
+        var alvo = '/api/visita' + (de ? '?de=' + encodeURIComponent(de) : '');
+        fetch(alvo, { method: 'POST', keepalive: true }).catch(function () {});
+      } catch (e) {}
     });
   </script>
 </body>

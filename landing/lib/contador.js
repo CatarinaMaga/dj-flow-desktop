@@ -107,6 +107,7 @@ async function resumo(dias) {
         comandos.push(['SCARD', `d:pessoas:${data}`]);
     });
     comandos.push(['HGETALL', `v:origem:${hoje()}`]);
+    comandos.push(['HGETALL', `v:botao:${hoje()}`]);
     const resultado = await executar(comandos);
 
     const numero = (v) => (v === null || v === undefined ? 0 : Number(v) || 0);
@@ -122,20 +123,25 @@ async function resumo(dias) {
     });
 
     // HGETALL volta como lista alternando campo e valor
-    const bruto = resultado[resultado.length - 1] || [];
-    const origens = {};
-    if (Array.isArray(bruto)) {
-        for (let i = 0; i < bruto.length; i += 2) origens[bruto[i]] = Number(bruto[i + 1]) || 0;
-    } else if (bruto && typeof bruto === 'object') {
-        Object.entries(bruto).forEach(([k, v]) => { origens[k] = Number(v) || 0; });
+    function mapa(bruto) {
+        const saida = {};
+        if (Array.isArray(bruto)) {
+            for (let i = 0; i < bruto.length; i += 2) saida[bruto[i]] = Number(bruto[i + 1]) || 0;
+        } else if (bruto && typeof bruto === 'object') {
+            Object.entries(bruto).forEach(([k, v]) => { saida[k] = Number(v) || 0; });
+        }
+        return saida;
     }
+    const origens = mapa(resultado[resultado.length - 2]);
+    const campanhas = mapa(resultado[resultado.length - 1]);
 
     return {
         configurado: true,
         geradoEm: new Date().toISOString(),
         totais: { visitas: numero(resultado[0]), downloads: numero(resultado[1]) },
         serie,
-        origensHoje: origens
+        origensHoje: origens,
+        canaisHoje: campanhas
     };
 }
 

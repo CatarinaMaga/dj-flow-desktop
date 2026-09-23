@@ -1,6 +1,6 @@
 {
   "name": "dj-flow-desktop",
-  "version": "1.3.7",
+  "version": "1.3.8",
   "description": "DJ Flow - app para DJs que usam Rekordbox: detector de qualidade real das músicas (320 kbps de verdade) e Cofre organizado.",
   "main": "main.js",
   "scripts": {

@@ -336,12 +336,18 @@
             { cor: '#7aa2f7', pontos: serie.map(d => ({ data: d.data, valor: d.baixaram })) }
         ]);
 
-        const origens = Object.entries(resposta.dados.origensHoje || {})
+        const resumir = (obj) => Object.entries(obj || {})
             .sort((a, b) => b[1] - a[1])
             .slice(0, 4)
             .map(([nome, n]) => `${nome} (${n})`)
             .join(' · ');
-        nota.textContent = origens ? t('painel.origensHoje', { lista: origens }) : t('painel.landingOk');
+
+        // canais vêm do ?de= nos links que você posta; origens, do referer
+        const canais = resumir(resposta.dados.canaisHoje);
+        const origens = resumir(resposta.dados.origensHoje);
+        if (canais) nota.textContent = t('painel.canaisHoje', { lista: canais });
+        else if (origens) nota.textContent = t('painel.origensHoje', { lista: origens });
+        else nota.textContent = t('painel.landingOk');
     }
 
     function cartao(rotulo, valor, detalhe) {
