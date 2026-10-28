@@ -10,6 +10,8 @@ Feito por **Catarina Magalhães**, DJ e desenvolvedora de sistemas e aplicativos
 
 - **Português e inglês:** o app escolhe o idioma do Windows automaticamente, e dá pra trocar no seletor PT/EN no topo.
 - **Download em lote:** cole vários links de uma vez, **separados por um espaço**, e o app baixa um atrás do outro mostrando a fila. O link de uma playlist ou álbum inteiro também funciona sozinho.
+- **Links do Spotify:** cole o link de uma música, álbum ou playlist pública — inclusive colaborativa — e o app baixa cada faixa. O áudio do Spotify é protegido e não pode ser baixado; o app lê o nome e o artista de cada música e busca no YouTube a versão com a mesma duração, preferindo o canal oficial do artista. O arquivo sai como **Artista - Título**, e faixas com letra explícita aparecem marcadas com um **E** vermelho na fila.
+- **Botões de fonte:** copie o link no YouTube, SoundCloud, Bandcamp, Archive.org ou Spotify e clique no botão da fonte para colar.
 - **Detector de qualidade:** analisa os agudos de cada faixa do Cofre e mostra se ela é de qualidade Alta, Média, Baixa ou Muito baixa. Também avisa quando um arquivo diz ter 320 kbps ou ser sem perdas, mas foi convertido de uma fonte fraca.
 - **Cofre DJ Flow:** pasta dedicada em `Músicas\Cofre DJ Flow`, pronta para importar no Rekordbox.
 - **Sempre visível:** a janela não some quando você clica no Rekordbox.
@@ -55,6 +57,8 @@ Use o DJ Flow apenas com músicas que você tem direito de usar: compradas, lice
 
 **Features**
 - **Batch downloads:** paste several links at once, **separated by a space**, and the app downloads them one after another showing the queue. A whole playlist or album link also works on its own.
+- **Spotify links:** paste a song, album or public playlist link — collaborative ones included — and the app downloads every track. Spotify audio is protected and cannot be downloaded; the app reads each song's title and artist and finds the YouTube version with the same length, preferring the artist's official channel. Files are named **Artist - Title**, and tracks with explicit lyrics get a red **E** in the queue.
+- **Source buttons:** copy the link on YouTube, SoundCloud, Bandcamp, Archive.org or Spotify and click that source's button to paste it.
 - **Quality detector:** analyzes the real high-frequency cutoff of every track in the vault and rates it High, Medium, Low or Very low. It also flags files that claim to be 320 kbps or lossless but were transcoded from a weak source.
 - **Vault folder** at `Music\Cofre DJ Flow`, ready to import into Rekordbox.
 - **Always on top**, so it doesn't disappear behind Rekordbox.
