@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('djflow', {
     appVersion: ipcRenderer.sendSync('get-app-version'),
     quitApp: () => ipcRenderer.send('app-quit'),
     reportLanguage: (lang) => ipcRenderer.send('ui-language', lang),
+    lerAreaDeTransferencia: () => ipcRenderer.invoke('ler-area-de-transferencia'),
     onUpdateAvailable: (callback) => {
         ipcRenderer.on('app-update-available', (_event, info) => callback(info));
     }

@@ -65,11 +65,13 @@
         <!-- ÁREA DE COLETA -->
         <div class="input-container">
             <h3 class="input-label" data-i18n="main.linkLabel">Link da Faixa:</h3>
+            <!-- Cada fonte é um botão: copie o link lá e clique aqui para colar -->
             <div class="source-badges">
-                <span class="badge">YouTube</span>
-                <span class="badge">SoundCloud</span>
-                <span class="badge">Bandcamp</span>
-                <span class="badge">Archive.org</span>
+                <button type="button" class="badge" data-fonte="youtube" title="Copie o link e clique aqui para colar" data-i18n-title="main.sourceHint">YouTube</button>
+                <button type="button" class="badge" data-fonte="soundcloud" title="Copie o link e clique aqui para colar" data-i18n-title="main.sourceHint">SoundCloud</button>
+                <button type="button" class="badge" data-fonte="bandcamp" title="Copie o link e clique aqui para colar" data-i18n-title="main.sourceHint">Bandcamp</button>
+                <button type="button" class="badge" data-fonte="archive" title="Copie o link e clique aqui para colar" data-i18n-title="main.sourceHint">Archive.org</button>
+                <button type="button" class="badge badge-spotify" data-fonte="spotify" title="Copie o link e clique aqui para colar" data-i18n-title="main.sourceHint">Spotify</button>
             </div>
             <div class="input-wrapper">
                 <input type="text" id="yt-link-input" placeholder="Cole um link ou vários separados por espaço..." data-i18n-placeholder="main.placeholder" title="Vários links de uma vez? Separe cada um com um espaço. O link de uma playlist ou álbum também funciona sozinho." data-i18n-title="main.linkHint" autocomplete="off">

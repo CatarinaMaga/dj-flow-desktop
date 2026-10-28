@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -7,6 +7,7 @@ const { execFile } = require('child_process');
 const express = require('express');
 const cors = require('cors');
 const youtubedl = require('youtube-dl-exec');
+const spotify = require('./spotify');
 
 const REPO_OWNER = 'CatarinaMaga';
 const REPO_NAME = 'dj-flow-desktop';
@@ -37,7 +38,10 @@ const SUPPORTED_SOURCES = [
     'youtu.be',
     'soundcloud.com',
     'bandcamp.com',
-    'archive.org'
+    'archive.org',
+    // Spotify só fornece nome e artista; o áudio vem do YouTube (ver spotify.js)
+    'open.spotify.com',
+    'spotify.link'
 ];
 
 function isSupportedUrl(url) {
@@ -58,18 +62,23 @@ function getCleanUrl(rawUrl) {
         if (parsed.hostname.includes('youtu.be')) {
             return `https://youtu.be${parsed.pathname}`;
         }
-        // Para SoundCloud, Bandcamp e Archive.org retorna a URL limpa sem parâmetros extras
+        // Para SoundCloud, Bandcamp, Archive.org e Spotify retorna a URL limpa sem parâmetros extras
         return `${parsed.origin}${parsed.pathname}`;
     } catch (e) {
         return rawUrl.split('&')[0];
     }
 }
 
+function minutosESegundos(ms) {
+    const total = Math.round((ms || 0) / 1000);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
 // Endpoint: Fazer download físico para o Cofre
 serverApp.get('/download/disk', async (req, res) => {
     const videoUrl = req.query.url;
     if (!videoUrl || !isSupportedUrl(videoUrl)) {
-        return res.status(400).json({ code: 'invalid_url', error: 'URL inválida ou fonte não suportada. Use YouTube, SoundCloud, Bandcamp ou Archive.org.' });
+        return res.status(400).json({ code: 'invalid_url', error: 'URL inválida ou fonte não suportada. Use YouTube, SoundCloud, Bandcamp, Archive.org ou Spotify.' });
     }
 
     if (!cofrePath) {
@@ -87,13 +96,43 @@ serverApp.get('/download/disk', async (req, res) => {
         const logPath = path.join(app.getPath('userData'), 'download-debug.log');
         fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] Baixando: ${cleanVideoUrl}\nDestino: ${cofrePath}\n`);
 
+        let origem = cleanVideoUrl;
+        let modelo = '%(title)s.%(ext)s';
+        let nomesRestritos = true;
+
+        // Link do Spotify: o áudio de lá é protegido. Lemos nome e artista e
+        // baixamos a versão do YouTube com a mesma duração, já com o arquivo
+        // batizado "Artista - Título".
+        if (spotify.ehSpotify(cleanVideoUrl)) {
+            let lista;
+            try {
+                lista = await spotify.listarFaixas(cleanVideoUrl);
+            } catch (e) {
+                fs.appendFileSync(logPath, `[${new Date().toISOString()}] Spotify ilegível: ${e.message}\n`);
+                return res.status(404).json({ code: 'spotify_unavailable', error: 'Não foi possível ler esse link do Spotify.' });
+            }
+            if (lista.tipo !== 'track') {
+                return res.status(400).json({ code: 'spotify_collection', error: 'Playlists e álbuns do Spotify são baixados faixa a faixa.' });
+            }
+            const faixa = lista.faixas[0];
+            const achado = faixa ? await spotify.acharNoYouTube(faixa, binPath) : null;
+            if (!achado) {
+                return res.status(404).json({ code: 'spotify_not_found', error: 'Faixa do Spotify não encontrada em outra fonte.' });
+            }
+            fs.appendFileSync(logPath, `Spotify: ${faixa.artistas} - ${faixa.titulo} -> ${achado.url} (${achado.duracao}s)\n`);
+            origem = achado.url;
+            // % é marcador no modelo de nome do yt-dlp; precisa ir dobrado
+            modelo = `${spotify.nomeDeArquivo(faixa).replace(/%/g, '%%')}.%(ext)s`;
+            nomesRestritos = false;
+        }
+
         // Formato com fallback: tenta m4a, depois melhor áudio disponível
-        await youtubedl.exec(cleanVideoUrl, {
+        await youtubedl.exec(origem, {
             format: 'bestaudio[ext=m4a]/bestaudio/best',
-            output: '%(title)s.%(ext)s',
+            output: modelo,
             noWarnings: true,
             noCheckCertificates: true,
-            restrictFilenames: true,
+            restrictFilenames: nomesRestritos,
             noPlaylist: true,
             noCacheDir: true
         }, { 
@@ -119,6 +158,34 @@ serverApp.get('/info/youtube', async (req, res) => {
     }
     
     const cleanVideoUrl = getCleanUrl(videoUrl);
+
+    if (spotify.ehSpotify(cleanVideoUrl)) {
+        try {
+            const lista = await spotify.listarFaixas(cleanVideoUrl);
+            if (lista.tipo === 'track') {
+                const faixa = lista.faixas[0];
+                return res.json({
+                    success: true,
+                    title: `${faixa.artistas} - ${faixa.titulo}`,
+                    thumbnail: lista.capa,
+                    duration: minutosESegundos(faixa.duracaoMs),
+                    explicit: faixa.explicita
+                });
+            }
+            // playlist ou álbum: a prévia mostra o nome e quantas faixas tem
+            return res.json({
+                success: true,
+                title: lista.nome,
+                thumbnail: lista.capa,
+                duration: '',
+                count: lista.faixas.length,
+                collection: true
+            });
+        } catch (e) {
+            console.error('Erro ao ler link do Spotify:', e);
+            return res.status(404).json({ code: 'spotify_unavailable', error: 'Não foi possível ler esse link do Spotify.' });
+        }
+    }
 
     try {
         const binPath = path.join(__dirname, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp.exe');
@@ -153,6 +220,21 @@ serverApp.get('/info/expand', async (req, res) => {
     const rawUrl = req.query.url;
     if (!rawUrl || !isSupportedUrl(rawUrl)) {
         return res.status(400).json({ code: 'invalid_url', error: 'URL inválida ou fonte não suportada.' });
+    }
+
+    if (spotify.ehSpotify(rawUrl)) {
+        try {
+            const lista = await spotify.listarFaixas(getCleanUrl(rawUrl));
+            const faixas = lista.faixas.map(f => ({
+                url: `https://open.spotify.com/track/${f.id}`,
+                title: `${f.artistas} - ${f.titulo}`,
+                explicit: f.explicita
+            }));
+            return res.json({ success: true, tracks: faixas.length ? faixas : [{ url: rawUrl, title: '' }] });
+        } catch (e) {
+            console.error('Erro ao expandir link do Spotify:', e);
+            return res.status(404).json({ code: 'spotify_unavailable', error: 'Não foi possível ler esse link do Spotify.' });
+        }
     }
 
     try {
@@ -451,6 +533,10 @@ app.on('window-all-closed', () => {
 app.on('quit', () => {
   if (localServer) localServer.close();
 });
+
+// Os botões de fonte (YouTube, Spotify...) colam o link copiado com um clique.
+// O renderer roda isolado e não tem acesso direto à área de transferência.
+ipcMain.handle('ler-area-de-transferencia', () => clipboard.readText());
 
 ipcMain.on('get-api-token', (event) => {
   event.returnValue = API_TOKEN;

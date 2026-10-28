@@ -80,7 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'youtu.be',
         'soundcloud.com',
         'bandcamp.com',
-        'archive.org'
+        'archive.org',
+        'open.spotify.com',
+        'spotify.link'
     ];
 
     function isSupportedUrl(url) {
@@ -234,6 +236,54 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(u => isSupportedUrl(u));
     }
 
+    // ── Botões de fonte: um clique cola o link copiado ─────────────────────────
+    // Só entra o que for daquela fonte. Se o campo já tiver links, o novo vai
+    // para o fim, separado por espaço, e a fila de vários links continua valendo.
+    const FONTES = {
+        youtube:    { nome: 'YouTube',     hosts: ['youtube.com', 'youtu.be'] },
+        soundcloud: { nome: 'SoundCloud',  hosts: ['soundcloud.com'] },
+        bandcamp:   { nome: 'Bandcamp',    hosts: ['bandcamp.com'] },
+        archive:    { nome: 'Archive.org', hosts: ['archive.org'] },
+        spotify:    { nome: 'Spotify',     hosts: ['open.spotify.com', 'spotify.link'] }
+    };
+
+    function ehDaFonte(url, fonte) {
+        try {
+            const host = new URL(url).hostname;
+            return fonte.hosts.some(h => host === h || host.endsWith(`.${h}`));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    document.querySelectorAll('.source-badges [data-fonte]').forEach(botao => {
+        botao.addEventListener('click', async () => {
+            const fonte = FONTES[botao.dataset.fonte];
+            let copiado = '';
+            try {
+                copiado = window.djflow
+                    ? await window.djflow.lerAreaDeTransferencia()
+                    : await navigator.clipboard.readText();
+            } catch (e) {
+                console.warn('Não foi possível ler a área de transferência:', e);
+            }
+
+            const links = (String(copiado).match(/https?:\/\/\S+/g) || []).filter(u => ehDaFonte(u, fonte));
+            if (links.length === 0) {
+                addLog(msg('log.clipboardNoMatch', { source: fonte.nome }), '#ffb86c');
+                input.focus();
+                return;
+            }
+
+            const atual = input.value.trim();
+            const novos = links.filter(l => !atual.includes(l));
+            input.value = [atual, ...novos].filter(Boolean).join(' ');
+            input.dispatchEvent(new Event('input'));
+            botao.classList.add('colado');
+            setTimeout(() => botao.classList.remove('colado'), 700);
+        });
+    });
+
     let timeout = null;
     input.addEventListener('input', () => {
         const urls = urlsDoCampo();
@@ -275,7 +325,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const title = data.title || t('log.fileFallback');
 
             previewTitle.textContent = title;
-            previewDuration.textContent = data.duration || '';
+            // playlist ou álbum do Spotify: mostra quantas faixas vão para a fila
+            previewDuration.textContent = data.collection
+                ? t('main.collectionCount', { count: data.count || 0 })
+                : (data.duration || '');
             previewThumb.style.backgroundImage = /^https:\/\//.test(data.thumbnail) ? `url("${encodeURI(data.thumbnail)}")` : 'none';
 
             trackPreview.style.display = 'flex';
@@ -315,6 +368,14 @@ document.addEventListener('DOMContentLoaded', () => {
             nome.className = 'queue-name';
             nome.textContent = `${i + 1}. ${nomeDaFaixa(track)}`;
             nome.title = track.url;
+            // o Spotify informa se a letra é explícita; útil em festa de criança
+            if (track.explicit) {
+                const marca = document.createElement('span');
+                marca.className = 'queue-explicita';
+                marca.textContent = 'E';
+                marca.title = t('queue.explicit');
+                nome.appendChild(marca);
+            }
             const status = document.createElement('span');
             status.className = 'queue-status';
             status.textContent = t('queue.pending');
@@ -346,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Se a expansão falhar em um link, ele entra na fila assim mesmo e o erro
         // aparece só naquele item, sem derrubar os outros.
         const tracks = [];
-        if (urls.length === 1 && titulo) {
+        if (urls.length === 1 && titulo && !currentTrackInfo?.collection) {
             tracks.push({ url: urls[0], title: titulo });
         } else {
             addLog(msg('log.expanding'), 'var(--accent-cyan)');

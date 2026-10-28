@@ -672,6 +672,7 @@ body.satellite-body {
 }
 
 .badge {
+    font-family: inherit;
     font-size: 0.6rem;
     font-weight: 600;
     padding: 3px 8px;
@@ -681,6 +682,50 @@ body.satellite-body {
     border: 1px solid rgba(110, 127, 243, 0.25);
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.badge:hover {
+    background: rgba(110, 127, 243, 0.22);
+    border-color: rgba(110, 127, 243, 0.5);
+}
+
+.badge:focus-visible {
+    outline: 2px solid var(--accent-cyan);
+    outline-offset: 2px;
+}
+
+/* o verde do Spotify, para ela ser reconhecida de longe */
+.badge-spotify {
+    background: rgba(30, 215, 96, 0.12);
+    color: #1ed760;
+    border-color: rgba(30, 215, 96, 0.3);
+}
+
+.badge-spotify:hover {
+    background: rgba(30, 215, 96, 0.22);
+    border-color: rgba(30, 215, 96, 0.55);
+}
+
+/* piscada rápida confirmando que o link foi colado */
+.badge.colado {
+    background: rgba(80, 250, 123, 0.3);
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.queue-explicita {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1.4;
+    background: rgba(255, 85, 85, 0.18);
+    color: var(--danger);
+    vertical-align: 1px;
 }
 
 /* ==================== PAINEL DA CRIADORA (Ctrl+Shift+D) ==================== */
