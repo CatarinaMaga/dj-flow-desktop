@@ -36,6 +36,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "spotify.js",
       "index.html",
       "css/**/*",
       "js/**/*",
