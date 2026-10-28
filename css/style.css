@@ -717,7 +717,7 @@ body.satellite-body {
 
 .queue-explicita {
     display: inline-block;
-    margin-left: 6px;
+    margin-right: 6px;
     padding: 0 4px;
     border-radius: 3px;
     font-size: 0.6rem;

@@ -366,9 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
             li.className = 'queue-item';
             const nome = document.createElement('span');
             nome.className = 'queue-name';
-            nome.textContent = `${i + 1}. ${nomeDaFaixa(track)}`;
+            nome.textContent = `${i + 1}. `;
             nome.title = track.url;
-            // o Spotify informa se a letra é explícita; útil em festa de criança
+            // O Spotify informa se a letra é explícita; útil em festa de criança.
+            // A marca vem antes do nome porque nomes longos são cortados com "...".
             if (track.explicit) {
                 const marca = document.createElement('span');
                 marca.className = 'queue-explicita';
@@ -376,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 marca.title = t('queue.explicit');
                 nome.appendChild(marca);
             }
+            nome.appendChild(document.createTextNode(nomeDaFaixa(track)));
             const status = document.createElement('span');
             status.className = 'queue-status';
             status.textContent = t('queue.pending');
