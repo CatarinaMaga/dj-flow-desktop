@@ -12,6 +12,17 @@
     --danger: #ff5555;
     --success: #50fa7b;
     --grad-main: linear-gradient(135deg, #6e7ff3 0%, #9d50bb 100%);
+    /* cores que antes eram fixas no estilo ou no código */
+    --warning: #ffb86c;
+    --log-neutro: #ccc;
+    --spotify: #1ed760;
+    --quality-media: #f1fa8c;
+    --chart-grid: rgba(255, 255, 255, 0.12);
+    --chart-text: rgba(235, 238, 245, 0.45);
+    --chart-azul: #7aa2f7;
+    --chart-roxo: #bb9af7;
+    --chart-verde: #50dc8c;
+    color-scheme: dark;
 }
 
 * {
@@ -161,7 +172,7 @@ body.satellite-body {
     padding: 12px 14px;
     background: var(--bg-input);
     border: 1px solid var(--border-color);
-    color: white;
+    color: var(--text-main);
     border-radius: 8px;
     font-size: 0.9rem;
     transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -642,8 +653,8 @@ body.satellite-body {
 }
 
 .quality-badge.alta { color: var(--success); border-color: rgba(80, 250, 123, 0.4); background: rgba(80, 250, 123, 0.08); }
-.quality-badge.media { color: #f1fa8c; border-color: rgba(241, 250, 140, 0.4); background: rgba(241, 250, 140, 0.08); }
-.quality-badge.baixa { color: #ffb86c; border-color: rgba(255, 184, 108, 0.4); background: rgba(255, 184, 108, 0.08); }
+.quality-badge.media { color: var(--quality-media); border-color: rgba(241, 250, 140, 0.4); background: rgba(241, 250, 140, 0.08); }
+.quality-badge.baixa { color: var(--warning); border-color: rgba(255, 184, 108, 0.4); background: rgba(255, 184, 108, 0.08); }
 .quality-badge.muito-baixa,
 .quality-badge.erro { color: var(--danger); border-color: rgba(255, 85, 85, 0.4); background: rgba(255, 85, 85, 0.08); }
 
@@ -699,7 +710,7 @@ body.satellite-body {
 /* o verde do Spotify, para ela ser reconhecida de longe */
 .badge-spotify {
     background: rgba(30, 215, 96, 0.12);
-    color: #1ed760;
+    color: var(--spotify);
     border-color: rgba(30, 215, 96, 0.3);
 }
 
@@ -847,8 +858,8 @@ body.satellite-body {
     display: inline-block;
 }
 
-.painel-chave .ponto.azul { background: #7aa2f7; }
-.painel-chave .ponto.roxo { background: #bb9af7; }
+.painel-chave .ponto.azul { background: var(--chart-azul); }
+.painel-chave .ponto.roxo { background: var(--chart-roxo); }
 
 .painel-grafico canvas {
     width: 100%;
@@ -892,7 +903,7 @@ body.satellite-body {
 
 .painel-cartoes-3 .painel-cartao strong { font-size: 20px; }
 
-.painel-chave .ponto.verde { background: #50dc8c; }
+.painel-chave .ponto.verde { background: var(--chart-verde); }
 
 .painel-conectar {
     display: flex;
@@ -958,6 +969,13 @@ body.satellite-body {
     background: #0f1012;
 }
 
+.update-banner-btn.ocupado {
+    min-width: 112px;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
 .update-banner-close {
     background: none;
     border: none;
@@ -971,3 +989,93 @@ body.satellite-body {
 .update-banner-close:hover {
     color: #0f1012;
 }
+
+/* ==================== ASSINATURA DE AUTORIA ==================== */
+.app-assinatura {
+    flex: none;
+    padding: 6px 12px 8px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.6rem;
+    letter-spacing: 0.3px;
+    color: #6b6b72;
+    text-align: center;
+}
+
+.app-assinatura strong {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* ==================== MODO CLARO ====================
+   Ativado pelo botão ☀/☾ do cabeçalho; a escolha fica guardada no app.
+   As variáveis cobrem quase tudo; os blocos abaixo trocam o que o tema
+   escuro desenha com cor fixa. */
+:root[data-theme="light"] {
+    --bg-dark: #f3f4f7;
+    --bg-panel: #ffffff;
+    --bg-input: #eef0f4;
+    --accent-purple: #8a3fae;
+    --accent-purple-glow: rgba(138, 63, 174, 0.22);
+    --accent-cyan: #4656d4;
+    --accent-green: #0a8794;
+    --border-color: #dde0e8;
+    --text-main: #1c1e26;
+    --text-muted: #6b6f7c;
+    --danger: #cf3535;
+    --success: #1c9a4a;
+    --warning: #c4650c;
+    --log-neutro: #3b3f4a;
+    --spotify: #128a3d;
+    --quality-media: #8f7200;
+    --chart-grid: rgba(20, 22, 30, 0.10);
+    --chart-text: rgba(28, 30, 38, 0.55);
+    --chart-azul: #4f7ae8;
+    --chart-roxo: #9b6fe0;
+    --chart-verde: #1fa463;
+    color-scheme: light;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c6cad4; }
+[data-theme="light"] .satellite-header { background-color: #ffffff; }
+[data-theme="light"] .status-bar { color: var(--text-muted); }
+[data-theme="light"] .lang-select:hover,
+[data-theme="light"] .lang-select:focus-visible,
+[data-theme="light"] .quality-close:hover { border-color: #b8bdc9; }
+[data-theme="light"] .track-preview { background: var(--bg-input); }
+[data-theme="light"] .preview-thumb { background-color: #e1e4eb; }
+[data-theme="light"] .btn-primary { box-shadow: 0 4px 14px rgba(70, 86, 212, 0.18); }
+[data-theme="light"] .btn-secondary:hover { background: #eef0f5; border-color: #b8bdc9; }
+[data-theme="light"] .log-header { border-bottom-color: #e6e8ee; }
+[data-theme="light"] .empty-log { color: #9ca1ad; }
+[data-theme="light"] .helper-text { color: var(--text-muted); background: #ffffff; border-color: var(--border-color); }
+[data-theme="light"] .terms-overlay,
+[data-theme="light"] .quality-overlay,
+[data-theme="light"] .painel-overlay { background: rgba(28, 30, 38, 0.45); }
+[data-theme="light"] .terms-card { box-shadow: 0 20px 50px rgba(20, 22, 30, 0.18); }
+[data-theme="light"] .terms-note,
+[data-theme="light"] .quality-note { color: #8a8f9b; }
+[data-theme="light"] .quality-item.suspicious .quality-detail { color: var(--danger); }
+[data-theme="light"] .app-assinatura { color: #8a8f9b; }
+
+/* botão de tema, com a mesma cara do seletor de idioma */
+.tema-toggle {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 2px 5px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.tema-toggle:hover,
+.tema-toggle:focus-visible {
+    color: var(--text-main);
+    border-color: #555;
+    outline: none;
+}
+
+[data-theme="light"] .tema-toggle:hover,
+[data-theme="light"] .tema-toggle:focus-visible { border-color: #b8bdc9; }

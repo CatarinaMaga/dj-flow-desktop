@@ -1,13 +1,14 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, clipboard } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, clipboard, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const express = require('express');
 const cors = require('cors');
 const youtubedl = require('youtube-dl-exec');
 const spotify = require('./spotify');
+const atualizador = require('./atualizador');
 
 const REPO_OWNER = 'CatarinaMaga';
 const REPO_NAME = 'dj-flow-desktop';
@@ -377,6 +378,36 @@ function isNewerVersion(remote, current) {
     return false;
 }
 
+// Versão nova anunciada pelo GitHub e o instalador já baixado, se houver.
+let atualizacao = null;
+let instaladorBaixado = null;
+
+ipcMain.handle('baixar-atualizacao', async (event) => {
+    if (!atualizacao || !atualizacao.instalador) throw new Error('nenhuma atualização disponível');
+    const destino = path.join(app.getPath('temp'), `DJ-Flow-Setup-${atualizacao.version}.exe`);
+    let ultimo = -1;
+    await atualizador.baixarInstalador(atualizacao.instalador, destino, (fracao) => {
+        const pct = Math.floor(fracao * 100);
+        if (pct !== ultimo) {
+            ultimo = pct;
+            event.sender.send('atualizacao-progresso', pct);
+        }
+    });
+    instaladorBaixado = destino;
+    return true;
+});
+
+// O instalador troca os arquivos do app, então o app precisa fechar. Ele é
+// aberto desvinculado deste processo, o app fecha logo em seguida, e o
+// instalador abre a versão nova quando termina.
+ipcMain.handle('instalar-atualizacao', () => {
+    if (!instaladorBaixado || !fs.existsSync(instaladorBaixado)) throw new Error('instalador não encontrado');
+    const instalador = spawn(instaladorBaixado, [], { detached: true, stdio: 'ignore' });
+    instalador.unref();
+    setTimeout(() => app.quit(), 500);
+    return true;
+});
+
 // Verifica no GitHub Releases se existe uma versão do próprio DJ Flow mais
 // nova que a instalada. Não baixa nem instala nada sozinho — só avisa o
 // usuário e aponta para a página de download.
@@ -403,9 +434,15 @@ function checkForAppUpdate(win) {
                 const currentVersion = app.getVersion();
 
                 if (latestVersion && isNewerVersion(latestVersion, currentVersion)) {
+                    atualizacao = {
+                        version: latestVersion,
+                        instalador: atualizador.instaladorDoRelease(release)
+                    };
                     win.webContents.send('app-update-available', {
                         version: latestVersion,
-                        url: release.html_url
+                        url: release.html_url,
+                        // sem instalador no release, o botão só abre a página
+                        automatica: Boolean(atualizacao.instalador)
                     });
                 }
             } catch (e) {
@@ -532,6 +569,12 @@ app.on('window-all-closed', () => {
 });
 app.on('quit', () => {
   if (localServer) localServer.close();
+});
+
+// A barra de título e os controles nativos do Windows seguem o tema do app,
+// não o do sistema: app escuro com barra clara (ou o contrário) fica estranho.
+ipcMain.on('ui-tema', (event, tema) => {
+    nativeTheme.themeSource = tema === 'light' ? 'light' : 'dark';
 });
 
 // Os botões de fonte (YouTube, Spotify...) colam o link copiado com um clique.

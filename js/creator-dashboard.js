@@ -92,6 +92,19 @@
     }
 
     // ── desenho dos gráficos ─────────────────────────────────────────────────
+    // O canvas não entende variáveis de CSS: as cores são lidas do tema atual
+    // a cada desenho, para os gráficos acompanharem o modo claro.
+    function corDoTema(nome, reserva) {
+        return getComputedStyle(document.documentElement).getPropertyValue(nome).trim() || reserva;
+    }
+
+    function comTransparencia(hex, alfa) {
+        const h = hex.replace('#', '');
+        if (h.length !== 6) return hex;
+        const n = parseInt(h, 16);
+        return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alfa})`;
+    }
+
     function prepararCanvas(canvas) {
         const escala = window.devicePixelRatio || 1;
         const largura = canvas.clientWidth;
@@ -105,8 +118,8 @@
     }
 
     function desenharEixos(ctx, largura, altura, margem, maximo, rotulos) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-        ctx.fillStyle = 'rgba(235,238,245,0.45)';
+        ctx.strokeStyle = corDoTema('--chart-grid', 'rgba(255,255,255,0.12)');
+        ctx.fillStyle = corDoTema('--chart-text', 'rgba(235,238,245,0.45)');
         ctx.font = '11px Inter, sans-serif';
         ctx.lineWidth = 1;
 
@@ -145,8 +158,9 @@
 
         // área sob a linha
         const gradiente = ctx.createLinearGradient(0, margem.cima, 0, altura - margem.baixo);
-        gradiente.addColorStop(0, 'rgba(122,162,247,0.35)');
-        gradiente.addColorStop(1, 'rgba(122,162,247,0)');
+        const azul = corDoTema('--chart-azul', '#7aa2f7');
+        gradiente.addColorStop(0, comTransparencia(azul, 0.35));
+        gradiente.addColorStop(1, comTransparencia(azul, 0));
         ctx.beginPath();
         ctx.moveTo(x(0), altura - margem.baixo);
         pontos.forEach((p, i) => ctx.lineTo(x(i), y(p.valor)));
@@ -157,11 +171,11 @@
 
         ctx.beginPath();
         pontos.forEach((p, i) => (i === 0 ? ctx.moveTo(x(i), y(p.valor)) : ctx.lineTo(x(i), y(p.valor))));
-        ctx.strokeStyle = '#7aa2f7';
+        ctx.strokeStyle = azul;
         ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        ctx.fillStyle = '#7aa2f7';
+        ctx.fillStyle = azul;
         pontos.forEach((p, i) => {
             ctx.beginPath();
             ctx.arc(x(i), y(p.valor), 3.5, 0, Math.PI * 2);
@@ -217,9 +231,9 @@
             const alturaPort = (alturaUtil * item.portatil) / maximo;
             const base = altura - margem.baixo;
 
-            ctx.fillStyle = '#7aa2f7';
+            ctx.fillStyle = corDoTema('--chart-azul', '#7aa2f7');
             ctx.fillRect(centro - larguraBarra / 2, base - alturaInst, larguraBarra, alturaInst);
-            ctx.fillStyle = '#bb9af7';
+            ctx.fillStyle = corDoTema('--chart-roxo', '#bb9af7');
             ctx.fillRect(centro - larguraBarra / 2, base - alturaInst - alturaPort, larguraBarra, alturaPort);
         });
     }
@@ -332,8 +346,8 @@
         );
 
         desenharLinhaDupla(canvas, [
-            { cor: '#50dc8c', pontos: serie.map(d => ({ data: d.data, valor: d.visitantes })) },
-            { cor: '#7aa2f7', pontos: serie.map(d => ({ data: d.data, valor: d.baixaram })) }
+            { cor: corDoTema('--chart-verde', '#50dc8c'), pontos: serie.map(d => ({ data: d.data, valor: d.visitantes })) },
+            { cor: corDoTema('--chart-azul', '#7aa2f7'), pontos: serie.map(d => ({ data: d.data, valor: d.baixaram })) }
         ]);
 
         const resumir = (obj) => Object.entries(obj || {})

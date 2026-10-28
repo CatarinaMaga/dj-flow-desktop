@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DJ Flow</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Aplica o tema salvo antes da tela aparecer, para não piscar escuro -->
+    <script>try { if (localStorage.getItem('djflow_tema') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}</script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body class="satellite-body">
@@ -54,6 +56,7 @@
         <div class="logo">DJ <span>FLOW</span></div>
         <div class="status-bar">
             Rekordbox Bridge <span id="app-version" class="app-version"></span>
+            <button id="tema-toggle" class="tema-toggle" type="button"></button>
             <select id="lang-select" class="lang-select" aria-label="Idioma" data-i18n-aria-label="lang.label">
                 <option value="pt">PT</option>
                 <option value="en">EN</option>
@@ -120,6 +123,11 @@
             <strong>Rekordbox:</strong> importe a pasta <span class="helper-path">Músicas / Cofre DJ Flow</span>
         </div>
     </main>
+
+    <!-- Assinatura de autoria -->
+    <footer class="app-assinatura" data-i18n-html="footer.signature">
+        © 2026 <strong>Catarina Magalhães</strong> · Analista e Desenvolvedora de Sistemas
+    </footer>
 
     <script src="js/i18n.js"></script>
     <script src="js/quality-analyzer.js"></script>

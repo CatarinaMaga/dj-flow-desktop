@@ -13,6 +13,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // O menu do botão direito é montado no processo principal e precisa saber o idioma.
     if (window.djflow) window.djflow.reportLanguage(I18n.lang);
 
+    // ── Tema claro / escuro ────────────────────────────────────────────────────
+    // O escuro é o padrão. A escolha fica guardada e é aplicada já no <head>
+    // do index.html, antes da tela aparecer.
+    const TEMA_KEY = 'djflow_tema';
+    const temaBotao = document.getElementById('tema-toggle');
+
+    function aplicarTema(tema) {
+        const claro = tema === 'light';
+        if (claro) document.documentElement.setAttribute('data-theme', 'light');
+        else document.documentElement.removeAttribute('data-theme');
+        // o ícone mostra para onde o clique leva
+        temaBotao.textContent = claro ? '☾' : '☀';
+        temaBotao.title = t(claro ? 'theme.toDark' : 'theme.toLight');
+        temaBotao.setAttribute('aria-label', temaBotao.title);
+        if (window.djflow && window.djflow.definirTema) window.djflow.definirTema(claro ? 'light' : 'dark');
+    }
+
+    aplicarTema(localStorage.getItem(TEMA_KEY) === 'light' ? 'light' : 'dark');
+    temaBotao.addEventListener('click', () => {
+        const novo = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        try { localStorage.setItem(TEMA_KEY, novo); } catch (e) { /* segue sem lembrar */ }
+        aplicarTema(novo);
+    });
+
     const langSelect = document.getElementById('lang-select');
     langSelect.value = I18n.lang;
     langSelect.addEventListener('change', () => {
@@ -144,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buildLogItem({ ts, parts, color, link }) {
         const li = document.createElement('li');
-        li.style.color = color;
+        // entradas salvas por versões antigas guardaram a cor em hex fixo
+        li.style.color = { '#ccc': 'var(--log-neutro)', '#ffb86c': 'var(--warning)' }[color] || color;
         const stamp = document.createElement('span');
         stamp.style.opacity = '0.4';
         stamp.textContent = `[${I18n.formatTime(new Date(ts))}]`;
@@ -185,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addLog(parts, color = '#ccc', link = null) {
+    function addLog(parts, color = 'var(--log-neutro)', link = null) {
         if (!logInitialized) {
             logList.innerHTML = '';
             logInitialized = true;
@@ -206,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function mostrarFaixaDeVersao(info) {
         if (!info || !/^https:\/\//.test(info.url || '')) return;
+        infoAtualizacao = { ...info };
         document.getElementById('update-banner-text').textContent = t('update.banner', { version: info.version });
         const link = document.getElementById('update-banner-link');
         link.href = info.url;
@@ -216,6 +242,45 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('update-banner-close').addEventListener('click', () => {
         updateBanner.hidden = true;
     });
+
+    // "Atualizar" baixa o instalador, confere e abre; o app fecha e volta já
+    // atualizado. Se algo der errado, o botão volta a abrir a página de
+    // download, como antes.
+    let infoAtualizacao = null;
+    let atualizando = false;
+    const botaoAtualizar = document.getElementById('update-banner-link');
+
+    function motivoDoErro(err) {
+        // o Electron embrulha o erro do processo principal num texto próprio
+        return String(err && err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+    }
+
+    botaoAtualizar.addEventListener('click', async (e) => {
+        if (!infoAtualizacao || !infoAtualizacao.automatica || !window.djflow || !window.djflow.baixarAtualizacao) return;
+        e.preventDefault();
+        if (atualizando) return;
+        atualizando = true;
+        botaoAtualizar.classList.add('ocupado');
+        botaoAtualizar.textContent = t('update.downloading', { pct: 0 });
+        try {
+            await window.djflow.baixarAtualizacao();
+            botaoAtualizar.textContent = t('update.installing');
+            await window.djflow.instalarAtualizacao();
+        } catch (err) {
+            atualizando = false;
+            infoAtualizacao.automatica = false;
+            botaoAtualizar.classList.remove('ocupado');
+            botaoAtualizar.textContent = t('update.manual');
+            addLog(msg('log.updateFailed', { message: motivoDoErro(err) }), 'var(--danger)',
+                { url: infoAtualizacao.url, labelKey: 'log.updateDownload' });
+        }
+    });
+
+    if (window.djflow && window.djflow.onAtualizacaoProgresso) {
+        window.djflow.onAtualizacaoProgresso((pct) => {
+            if (atualizando) botaoAtualizar.textContent = t('update.downloading', { pct });
+        });
+    }
 
     if (window.djflow) {
         window.djflow.onUpdateAvailable((info) => {
@@ -270,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const links = (String(copiado).match(/https?:\/\/\S+/g) || []).filter(u => ehDaFonte(u, fonte));
             if (links.length === 0) {
-                addLog(msg('log.clipboardNoMatch', { source: fonte.nome }), '#ffb86c');
+                addLog(msg('log.clipboardNoMatch', { source: fonte.nome }), 'var(--warning)');
                 input.focus();
                 return;
             }
@@ -458,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addLog(pararFila
                 ? msg('log.queueStopped', { done: baixadas, left: restantes })
                 : msg('log.queueDone', { done: baixadas, failed: falhas }),
-                falhas ? '#ffb86c' : 'var(--accent-green)');
+                falhas ? 'var(--warning)' : 'var(--accent-green)');
         }
 
         queueTitle.textContent = t('queue.title');
@@ -633,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 { key: 'log.qualitySummary', vars: totals },
                 ...(counts.suspeitas ? [{ key: 'log.qualitySuspicious', vars: { count: counts.suspeitas } }] : []),
                 { text: '.' }
-            ], weak || counts.suspeitas ? '#ffb86c' : 'var(--accent-green)');
+            ], weak || counts.suspeitas ? 'var(--warning)' : 'var(--accent-green)');
         } catch (e) {
             qualitySummary.textContent = t('quality.failed', { message: e.message });
         } finally {
