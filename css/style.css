@@ -289,7 +289,9 @@ body.satellite-body {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 10px;
-    max-height: max(150px, calc(45vh - 140px));
+    /* cresce com a janela, mas devagar: o registro embaixo precisa continuar
+       mostrando ao menos a última mensagem (é onde aparecem os erros) */
+    max-height: max(150px, calc(30vh - 80px));
     display: flex;
     flex-direction: column;
     gap: 8px;
