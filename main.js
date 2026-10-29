@@ -505,15 +505,24 @@ function buildContextMenu(params) {
 }
 
 function createWindow () {
+  const tamanho = lerTamanhoDaJanela();
   mainWindow = new BrowserWindow({
-    width: 400,
-    height: 680, // Caixinha retangular vertical (Estilo Widget); abaixo disso o registro fica sem espaço
+    width: tamanho.width,
+    height: tamanho.height,
+    // 400×680 é a caixinha vertical original; abaixo disso o registro fica sem
+    // espaço. Dá para crescer arrastando a borda (o registro, a fila e a lista
+    // de Qualidade crescem junto), mas não maximizar: como a janela fica sempre
+    // por cima, maximizada ela cobriria o Rekordbox inteiro.
+    minWidth: JANELA_MINIMA.width,
+    minHeight: JANELA_MINIMA.height,
+    maxWidth: JANELA_LARGURA_MAXIMA,
+    maximizable: false,
+    fullscreenable: false,
     icon: path.join(__dirname, 'assets/icon.png'), // Ícone da Janela
     backgroundColor: '#121212',
     title: 'DJ Flow - Rekordbox Companion',
     autoHideMenuBar: true,
     alwaysOnTop: true, // Magia para ficar acima do Rekordbox
-    resizable: false, // Fixa para não atrapalhar o Rekordbox
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -522,6 +531,7 @@ function createWindow () {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  lembrarTamanhoDaJanela(mainWindow);
 
   // Links com target="_blank" (ex.: aviso de nova versão) abrem no navegador
   // padrão do usuário em vez de uma nova janela Electron.
@@ -537,6 +547,37 @@ function createWindow () {
 
   mainWindow.webContents.once('did-finish-load', () => {
       checkForAppUpdate(mainWindow);
+  });
+}
+
+// Tamanho da janela: o que a pessoa deixou da última vez, dentro dos limites.
+// Coluna única: mais largo que o máximo só esticaria os botões.
+const JANELA_MINIMA = { width: 400, height: 680 };
+const JANELA_LARGURA_MAXIMA = 640;
+const ARQUIVO_DA_JANELA = path.join(app.getPath('userData'), 'janela.json');
+
+function lerTamanhoDaJanela() {
+  try {
+    const salvo = JSON.parse(fs.readFileSync(ARQUIVO_DA_JANELA, 'utf8'));
+    return {
+      width: Math.min(JANELA_LARGURA_MAXIMA, Math.max(JANELA_MINIMA.width, Math.round(salvo.width) || 0)),
+      height: Math.max(JANELA_MINIMA.height, Math.round(salvo.height) || 0)
+    };
+  } catch (e) {
+    return { ...JANELA_MINIMA };
+  }
+}
+
+function lembrarTamanhoDaJanela(janela) {
+  let espera = null;
+  janela.on('resize', () => {
+    clearTimeout(espera);
+    // grava só quando a pessoa para de arrastar
+    espera = setTimeout(() => {
+      if (janela.isDestroyed()) return;
+      const [width, height] = janela.getSize();
+      try { fs.writeFileSync(ARQUIVO_DA_JANELA, JSON.stringify({ width, height })); } catch (e) { /* fica o padrão */ }
+    }, 500);
   });
 }
 

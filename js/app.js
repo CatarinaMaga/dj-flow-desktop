@@ -223,6 +223,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadStoredLogs();
 
+    // Limpar: zera o registro na tela e o que está guardado.
+    document.getElementById('btn-log-limpar').addEventListener('click', () => {
+        localStorage.removeItem(LOG_STORAGE_KEY);
+        logList.innerHTML = '';
+        const vazio = document.createElement('li');
+        vazio.className = 'empty-log';
+        vazio.textContent = t('log.empty');
+        logList.appendChild(vazio);
+        logInitialized = false;
+    });
+
     // ── Aviso de nova versão do DJ Flow disponível ─────────────────────────────
     // A linha no registro guarda o histórico; a faixa no topo é o que a pessoa
     // realmente vê. Fechar a faixa vale só para esta sessão: na próxima abertura
@@ -283,8 +294,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (window.djflow) {
+        // A faixa aparece toda vez que o app abre; no registro, cada versão
+        // nova entra uma vez só, para não lotar o histórico de avisos iguais.
+        const VERSAO_AVISADA_KEY = 'djflow_versao_avisada';
         window.djflow.onUpdateAvailable((info) => {
             mostrarFaixaDeVersao(info);
+            if (localStorage.getItem(VERSAO_AVISADA_KEY) === info.version) return;
+            try { localStorage.setItem(VERSAO_AVISADA_KEY, info.version); } catch (e) { /* avisa de novo na próxima */ }
             addLog(msg('log.updateAvailable', { version: info.version }), 'var(--accent-cyan)',
                 { url: info.url, labelKey: 'log.updateDownload' });
         });

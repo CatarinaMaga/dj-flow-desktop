@@ -91,6 +91,8 @@
             'main.helper': '<strong>Rekordbox:</strong> importe a pasta <span class="helper-path">Músicas / Cofre DJ Flow</span>',
 
             'log.title': 'Registro de Atividade',
+            'log.clear': 'Limpar',
+            'log.clearHint': 'Apagar o registro de atividade',
             'log.empty': 'Aguardando entrada de link...',
             'log.analyzingLink': '🔍 Analisando link...',
             'log.ready': '⭐ Pronto: {title}',
@@ -246,6 +248,8 @@
             'main.helper': '<strong>Rekordbox:</strong> import the folder <span class="helper-path">Music / Cofre DJ Flow</span>',
 
             'log.title': 'Activity Log',
+            'log.clear': 'Clear',
+            'log.clearHint': 'Clear the activity log',
             'log.empty': 'Waiting for a link...',
             'log.analyzingLink': '🔍 Checking link...',
             'log.ready': '⭐ Ready: {title}',

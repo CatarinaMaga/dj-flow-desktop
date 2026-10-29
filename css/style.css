@@ -289,7 +289,7 @@ body.satellite-body {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 10px;
-    max-height: 150px;
+    max-height: max(150px, calc(45vh - 140px));
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -403,6 +403,32 @@ body.satellite-body {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+.log-acoes {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.log-limpar {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.6rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.log-limpar:hover,
+.log-limpar:focus-visible {
+    color: var(--text-main);
+    border-color: var(--accent-purple);
+    outline: none;
 }
 
 .log-dot {
