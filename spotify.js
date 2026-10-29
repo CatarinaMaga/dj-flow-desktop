@@ -108,8 +108,7 @@ function pontuar(candidato, faixa) {
     return pontos;
 }
 
-async function acharNoYouTube(faixa, binPath) {
-    const consulta = `${faixa.artistas} - ${faixa.titulo}`;
+async function buscarNoYouTube(consulta, binPath) {
     const resultado = await youtubedl.exec(`ytsearch5:${consulta}`, {
         dumpJson: true,
         flatPlaylist: true,
@@ -131,10 +130,28 @@ async function acharNoYouTube(faixa, binPath) {
             duracao: d.duration || 0
         }))
         .filter(c => c.url);
+    return candidatos;
+}
 
-    if (candidatos.length === 0) return null;
-    candidatos.sort((a, b) => pontuar(a, faixa) - pontuar(b, faixa));
-    return candidatos[0];
+// Vídeos do YouTube para a faixa, do mais provável ao menos provável. Com
+// muitos artistas no nome ("A, B, C, D - Título") a busca às vezes volta
+// vazia; aí tenta de novo só com o artista principal.
+async function candidatosNoYouTube(faixa, binPath) {
+    const artistaPrincipal = faixa.artistas.split(',')[0].trim();
+    const consultas = [`${faixa.artistas} - ${faixa.titulo}`];
+    if (artistaPrincipal && artistaPrincipal !== faixa.artistas.trim()) consultas.push(`${artistaPrincipal} - ${faixa.titulo}`);
+    for (const consulta of consultas) {
+        const candidatos = await buscarNoYouTube(consulta, binPath);
+        if (candidatos.length) return candidatos.sort((a, b) => pontuar(a, faixa) - pontuar(b, faixa));
+    }
+    return [];
+}
+
+// Se o primeiro vídeo não baixar, os seguintes só servem se a duração bater e
+// não forem outra versão (ao vivo, remix...): melhor falhar que baixar a
+// música errada.
+function serveComoAlternativa(candidato, faixa) {
+    return pontuar(candidato, faixa) < 40;
 }
 
 // "Artista - Título", sem os caracteres que o Windows não aceita em nome de
@@ -150,4 +167,4 @@ function nomeDeArquivo(faixa) {
     return base || 'Faixa do Spotify';
 }
 
-module.exports = { ehSpotify, listarFaixas, acharNoYouTube, nomeDeArquivo, pontuar };
+module.exports = { ehSpotify, listarFaixas, candidatosNoYouTube, serveComoAlternativa, nomeDeArquivo, pontuar };

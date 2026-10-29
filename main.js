@@ -92,6 +92,16 @@ function minutosESegundos(ms) {
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+// O motor explica no stderr por que não baixou. Alguns motivos são do vídeo
+// em si (restrição de idade, privado, removido): aí outro vídeo da mesma
+// música resolve, e "atualize o motor" seria a dica errada.
+function motivoDoErro(err) {
+    const texto = `${err.stderr || ''}\n${err.message || ''}`;
+    if (/confirm your age|age[- ]restricted|inappropriate for some users/i.test(texto)) return 'age_restricted';
+    if (/video unavailable|private video|not available in your country|this video is not available|has been removed|members-only|join this channel/i.test(texto)) return 'video_unavailable';
+    return 'download_failed';
+}
+
 // Endpoint: Fazer download físico para o Cofre
 serverApp.get('/download/disk', async (req, res) => {
     const videoUrl = req.query.url;
@@ -114,7 +124,8 @@ serverApp.get('/download/disk', async (req, res) => {
         const logPath = path.join(app.getPath('userData'), 'download-debug.log');
         fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] Baixando: ${cleanVideoUrl}\nDestino: ${cofrePath}\n`);
 
-        let origem = cleanVideoUrl;
+        // Endereços a tentar, em ordem (mais de um só para links do Spotify).
+        let tentativas = [{ url: cleanVideoUrl }];
         let modelo = '%(title)s.%(ext)s';
         let nomesRestritos = true;
 
@@ -133,38 +144,51 @@ serverApp.get('/download/disk', async (req, res) => {
                 return res.status(400).json({ code: 'spotify_collection', error: 'Playlists e álbuns do Spotify são baixados faixa a faixa.' });
             }
             const faixa = lista.faixas[0];
-            const achado = faixa ? await spotify.acharNoYouTube(faixa, binPath) : null;
-            if (!achado) {
+            const candidatos = faixa ? await spotify.candidatosNoYouTube(faixa, binPath) : [];
+            if (candidatos.length === 0) {
+                fs.appendFileSync(logPath, `Spotify: ${faixa ? `${faixa.artistas} - ${faixa.titulo}` : '?'} -> nada no YouTube\n`);
                 return res.status(404).json({ code: 'spotify_not_found', error: 'Faixa do Spotify não encontrada em outra fonte.' });
             }
-            fs.appendFileSync(logPath, `Spotify: ${faixa.artistas} - ${faixa.titulo} -> ${achado.url} (${achado.duracao}s)\n`);
-            origem = achado.url;
+            const [primeiro, ...outros] = candidatos;
+            tentativas = [primeiro, ...outros.filter(c => spotify.serveComoAlternativa(c, faixa))].slice(0, 3)
+                .map(c => ({ url: c.url, nota: `Spotify: ${faixa.artistas} - ${faixa.titulo} -> ${c.url} (${c.duracao}s)` }));
             // % é marcador no modelo de nome do yt-dlp; precisa ir dobrado
             modelo = `${spotify.nomeDeArquivo(faixa).replace(/%/g, '%%')}.%(ext)s`;
             nomesRestritos = false;
         }
 
-        // Formato com fallback: tenta m4a, depois melhor áudio disponível
-        await youtubedl.exec(origem, {
-            format: 'bestaudio[ext=m4a]/bestaudio/best',
-            output: modelo,
-            noWarnings: true,
-            noCheckCertificates: true,
-            restrictFilenames: nomesRestritos,
-            noPlaylist: true,
-            noCacheDir: true
-        }, { 
-            cwd: cofrePath,
-            executablePath: binPath
-        });
-        
+        for (const [i, tentativa] of tentativas.entries()) {
+            if (tentativa.nota) fs.appendFileSync(logPath, `${tentativa.nota}\n`);
+            try {
+                // Formato com fallback: tenta m4a, depois melhor áudio disponível
+                await youtubedl.exec(tentativa.url, {
+                    format: 'bestaudio[ext=m4a]/bestaudio/best',
+                    output: modelo,
+                    noWarnings: true,
+                    noCheckCertificates: true,
+                    restrictFilenames: nomesRestritos,
+                    noPlaylist: true,
+                    noCacheDir: true
+                }, {
+                    cwd: cofrePath,
+                    executablePath: binPath
+                });
+                break;
+            } catch (err) {
+                // Problema do vídeo: tenta o próximo. Problema do motor ou da
+                // rede: outro vídeo falharia igual.
+                if (i === tentativas.length - 1 || motivoDoErro(err) === 'download_failed') throw err;
+                fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${motivoDoErro(err)}: ${String(err.stderr || '').trim()}\n`);
+            }
+        }
+
         fs.appendFileSync(logPath, `[${new Date().toISOString()}] Execução concluída com sucesso.\n`);
         res.json({ success: true, message: 'Arquivo materializado no Cofre!' });
     } catch (err) {
         console.error('Erro no download:', err);
         const logPath = path.join(app.getPath('userData'), 'download-debug.log');
-        fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERRO: ${err.message}\n`);
-        res.status(500).json({ code: 'download_failed', error: err.message || 'Falha durante o download.' });
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERRO: ${err.message}\n${String(err.stderr || '').trim()}\n`);
+        res.status(500).json({ code: motivoDoErro(err), error: err.message || 'Falha durante o download.' });
     }
 });
 
