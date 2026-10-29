@@ -30,6 +30,22 @@ serverApp.use((req, res, next) => {
     next();
 });
 
+// O motor de download é um .exe dentro da pasta do app. Na versão portátil,
+// essa pasta é temporária: se for apagada com o app aberto, toda rota que
+// usa o motor falharia sem explicação. Melhor dizer o que aconteceu.
+const CAMINHO_DO_MOTOR = path.join(__dirname, 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp.exe');
+const ROTAS_DO_MOTOR = new Set(['/download/disk', '/info/youtube', '/info/expand', '/update-engine']);
+
+serverApp.use((req, res, next) => {
+    if (ROTAS_DO_MOTOR.has(req.path) && !fs.existsSync(CAMINHO_DO_MOTOR)) {
+        return res.status(500).json({
+            code: 'engine_missing',
+            error: 'Os arquivos do DJ Flow foram apagados enquanto ele estava aberto. Feche o app e abra de novo.'
+        });
+    }
+    next();
+});
+
 // cofrePath será definido dentro do whenReady (único), antes de qualquer uso
 let cofrePath = '';
 
@@ -438,11 +454,15 @@ function checkForAppUpdate(win) {
                         version: latestVersion,
                         instalador: atualizador.instaladorDoRelease(release)
                     };
+                    // A versão portátil não tem o que reinstalar: rodar o
+                    // instalador criaria um app instalado à parte. Nela, e
+                    // quando o release não traz instalador, o botão só abre
+                    // a página de download.
+                    const portatil = Boolean(process.env.PORTABLE_EXECUTABLE_FILE);
                     win.webContents.send('app-update-available', {
                         version: latestVersion,
                         url: release.html_url,
-                        // sem instalador no release, o botão só abre a página
-                        automatica: Boolean(atualizacao.instalador)
+                        automatica: Boolean(atualizacao.instalador) && !portatil
                     });
                 }
             } catch (e) {
@@ -523,10 +543,76 @@ function createWindow () {
 // Uma janela só: uma segunda instância não conseguiria abrir a porta 3891 (já
 // ocupada pela primeira) e todas as chamadas dela voltariam "não autorizado",
 // porque cairiam no servidor da primeira, que usa outra chave.
+// Sinal de vida da cópia principal: um arquivo cuja data ela renova a cada
+// poucos segundos enquanto está aberta, e que apaga ao fechar.
+const ARQUIVO_DA_PRINCIPAL = path.join(app.getPath('userData'), 'instancia-principal.vivo');
+const BATIDA_MS = 4000;
+const SILENCIO_MS = 15000;
+
+// Na versão portátil, toda abertura usa a mesma pasta temporária, e o
+// lançador apaga essa pasta assim que o app dele fecha. Se a segunda cópia
+// fechasse na hora, levaria junto os arquivos que a primeira ainda usa — o
+// motor de download sumia com o app aberto. Então a segunda cópia espera,
+// sem janela, até a principal parar de dar sinal de vida.
+//
+// Por que um sinal de vida, e não perguntar se o processo existe: no Windows,
+// um processo encerrado continua "existindo" enquanto alguém segura uma
+// referência a ele — e o lançador do portátil segura. A pergunta respondia
+// "sim" com a principal já fechada, e a segunda cópia esperava para sempre.
+function esperarAPrincipalFechar() {
+  const principalViva = () => {
+    try {
+      return Date.now() - fs.statSync(ARQUIVO_DA_PRINCIPAL).mtimeMs < SILENCIO_MS;
+    } catch (e) {
+      return false; // a principal apaga o arquivo ao fechar
+    }
+  };
+  if (!principalViva()) {
+    app.quit();
+    return;
+  }
+  // Exige três silêncios seguidos, e ignora a primeira volta depois de um
+  // intervalo longo: se o notebook dormiu, as duas cópias dormiram juntas e a
+  // principal só precisa de alguns segundos para voltar a bater.
+  let silencios = 0;
+  let ultimaVolta = Date.now();
+  const vigia = setInterval(() => {
+    const agora = Date.now();
+    const acordouAgora = agora - ultimaVolta > 3 * 2000;
+    ultimaVolta = agora;
+    if (acordouAgora) return;
+    silencios = principalViva() ? 0 : silencios + 1;
+    if (silencios >= 3) {
+      clearInterval(vigia);
+      app.quit();
+    }
+  }, 2000);
+}
+
+function darSinalDeVida() {
+  try {
+    fs.mkdirSync(path.dirname(ARQUIVO_DA_PRINCIPAL), { recursive: true });
+    fs.writeFileSync(ARQUIVO_DA_PRINCIPAL, String(process.pid));
+  } catch (e) {
+    console.warn('Não foi possível criar o sinal de vida:', e.message);
+    return;
+  }
+  const batida = setInterval(() => {
+    const agora = new Date();
+    try { fs.utimesSync(ARQUIVO_DA_PRINCIPAL, agora, agora); } catch (e) { /* tenta na próxima */ }
+  }, BATIDA_MS);
+  app.on('will-quit', () => {
+    clearInterval(batida);
+    fs.rmSync(ARQUIVO_DA_PRINCIPAL, { force: true });
+  });
+}
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
-  app.quit();
+  if (process.env.PORTABLE_EXECUTABLE_FILE) esperarAPrincipalFechar();
+  else app.quit();
 } else {
+  darSinalDeVida();
   app.on('second-instance', () => {
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();

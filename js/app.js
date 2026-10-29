@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('update-banner-text').textContent = t('update.banner', { version: info.version });
         const link = document.getElementById('update-banner-link');
         link.href = info.url;
-        link.textContent = t('update.action');
+        link.textContent = t(info.automatica ? 'update.action' : 'update.manual');
         updateBanner.hidden = false;
     }
 

@@ -124,6 +124,7 @@
             'errors.download_failed': 'Falha durante o download. Tente atualizar o motor de download.',
             'errors.track_unavailable': 'Faixa indisponível ou link inválido.',
             'errors.engine_update_failed': 'Não foi possível verificar atualizações do motor de download.',
+            'errors.engine_missing': 'Os arquivos do DJ Flow foram apagados enquanto ele estava aberto. Feche o app e abra de novo.',
             'errors.file_not_found': 'Arquivo não encontrado no Cofre.',
 
             'quality.title': 'Qualidade do Cofre',
@@ -278,6 +279,7 @@
             'errors.download_failed': 'Download failed. Try updating the download engine.',
             'errors.track_unavailable': 'Track unavailable or invalid link.',
             'errors.engine_update_failed': 'Couldn\'t check for download engine updates.',
+            'errors.engine_missing': 'DJ Flow files were deleted while it was open. Close the app and open it again.',
             'errors.file_not_found': 'File not found in the Vault.',
 
             'quality.title': 'Vault Quality',
