@@ -59,7 +59,8 @@
         const releases = await res.json();
 
         const versoes = releases.map(r => {
-            const instalador = r.assets.filter(a => /Setup/i.test(a.name)).reduce((s, a) => s + a.download_count, 0);
+            // só os .exe: o .blockmap e o latest.yml são lidos pelo atualizador do app
+            const instalador = r.assets.filter(a => /Setup.*\.exe$/i.test(a.name)).reduce((s, a) => s + a.download_count, 0);
             const portatil = r.assets.filter(a => !/Setup/i.test(a.name) && /\.exe$/i.test(a.name)).reduce((s, a) => s + a.download_count, 0);
             return {
                 versao: r.tag_name,

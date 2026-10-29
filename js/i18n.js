@@ -89,6 +89,7 @@
             'main.updateEngineHint': 'Atualiza o yt-dlp caso os downloads parem de funcionar',
             'main.checking': '<span class="icon">⏳</span> Verificando...',
             'main.helper': '<strong>Rekordbox:</strong> importe a pasta <span class="helper-path">Músicas / Cofre DJ Flow</span>',
+            'main.helperHint': 'Abrir o Cofre DJ Flow',
 
             'log.title': 'Registro de Atividade',
             'log.clear': 'Limpar',
@@ -246,6 +247,7 @@
             'main.updateEngineHint': 'Updates yt-dlp in case downloads stop working',
             'main.checking': '<span class="icon">⏳</span> Checking...',
             'main.helper': '<strong>Rekordbox:</strong> import the folder <span class="helper-path">Music / Cofre DJ Flow</span>',
+            'main.helperHint': 'Open the Cofre DJ Flow folder',
 
             'log.title': 'Activity Log',
             'log.clear': 'Clear',

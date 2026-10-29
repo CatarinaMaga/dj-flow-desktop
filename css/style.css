@@ -482,10 +482,24 @@ body.satellite-body {
     border-radius: 8px;
     line-height: 1.5;
     border: 1px solid #111;
+    font-family: inherit;
+    width: 100%;
+    cursor: pointer;
 }
 
 .helper-text strong {
     color: var(--text-muted);
+}
+
+.helper-text:hover,
+.helper-text:focus-visible {
+    border-color: var(--accent-purple);
+    outline: none;
+}
+
+.helper-text:hover .helper-path,
+.helper-text:focus-visible .helper-path {
+    text-decoration: underline;
 }
 
 /* ── TELA DE ACEITE ─────────────────────────────────────────────────────── */
@@ -1076,6 +1090,8 @@ body.satellite-body {
 [data-theme="light"] .log-header { border-bottom-color: #e6e8ee; }
 [data-theme="light"] .empty-log { color: #9ca1ad; }
 [data-theme="light"] .helper-text { color: var(--text-muted); background: #ffffff; border-color: var(--border-color); }
+[data-theme="light"] .helper-text:hover,
+[data-theme="light"] .helper-text:focus-visible { border-color: var(--accent-purple); }
 [data-theme="light"] .terms-overlay,
 [data-theme="light"] .quality-overlay,
 [data-theme="light"] .painel-overlay { background: rgba(28, 30, 38, 0.45); }

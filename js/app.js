@@ -552,15 +552,17 @@ document.addEventListener('DOMContentLoaded', () => {
         pararFila = true;
     });
 
-    // ── Abrir pasta ────────────────────────────────────────────────────────────
-    document.getElementById('btn-folder').addEventListener('click', async () => {
+    // ── Abrir pasta (botão "Abrir Cofre" e a dica do Rekordbox) ────────────────
+    async function abrirCofre() {
         try {
             await fetchJson('/open-folder');
         } catch (e) {
             console.error('Erro ao abrir pasta', e);
             addLog(msg('log.folderError'), 'var(--danger)');
         }
-    });
+    }
+    document.getElementById('btn-folder').addEventListener('click', abrirCofre);
+    document.getElementById('btn-dica-cofre').addEventListener('click', abrirCofre);
 
     // ── Atualizar motor de download (yt-dlp) ───────────────────────────────────
     btnUpdateEngine.addEventListener('click', async () => {

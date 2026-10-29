@@ -9,6 +9,7 @@ const cors = require('cors');
 const youtubedl = require('youtube-dl-exec');
 const spotify = require('./spotify');
 const atualizador = require('./atualizador');
+const { autoUpdater } = require('electron-updater');
 
 const REPO_OWNER = 'CatarinaMaga';
 const REPO_NAME = 'dj-flow-desktop';
@@ -397,19 +398,69 @@ function isNewerVersion(remote, current) {
 // Versão nova anunciada pelo GitHub e o instalador já baixado, se houver.
 let atualizacao = null;
 let instaladorBaixado = null;
+// Como a versão nova foi baixada: 'pequena' (só as partes que mudaram, pelo
+// electron-updater) ou 'completa' (o instalador inteiro, conferido pelo SHA-256).
+let modoDaAtualizacao = null;
+
+// O electron-updater conta o que fez (se baixou só as diferenças ou se precisou
+// baixar tudo). Fica num arquivo, para dar para investigar se algo der errado.
+const ARQUIVO_LOG_ATUALIZACAO = path.join(app.getPath('userData'), 'atualizacao.log');
+function registrarAtualizacao(nivel, mensagem) {
+    try { fs.appendFileSync(ARQUIVO_LOG_ATUALIZACAO, `[${new Date().toISOString()}] ${nivel}: ${mensagem}\n`); } catch (e) { /* sem registro */ }
+}
+autoUpdater.logger = {
+    info: (m) => registrarAtualizacao('info', m),
+    warn: (m) => registrarAtualizacao('aviso', m),
+    error: (m) => registrarAtualizacao('erro', m),
+    debug: () => {}
+};
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.on('error', (e) => registrarAtualizacao('erro', e && e.message));
+
+// Atualização pequena: o instalador de cada versão guarda uma cópia de si mesmo
+// no computador. O electron-updater compara essa cópia com o mapa de blocos
+// (.blockmap) da versão nova e pede ao GitHub só os pedaços diferentes. Se não
+// tiver como comparar, ele mesmo baixa o arquivo inteiro.
+async function baixarAtualizacaoPequena(aoProgredir) {
+    const resultado = await autoUpdater.checkForUpdates();
+    if (!resultado || !resultado.isUpdateAvailable) throw new Error('o atualizador não encontrou a versão nova');
+    const progresso = (p) => aoProgredir(p.percent / 100);
+    autoUpdater.on('download-progress', progresso);
+    try {
+        await autoUpdater.downloadUpdate();
+    } finally {
+        autoUpdater.removeListener('download-progress', progresso);
+    }
+}
 
 ipcMain.handle('baixar-atualizacao', async (event) => {
-    if (!atualizacao || !atualizacao.instalador) throw new Error('nenhuma atualização disponível');
-    const destino = path.join(app.getPath('temp'), `DJ-Flow-Setup-${atualizacao.version}.exe`);
+    if (!atualizacao) throw new Error('nenhuma atualização disponível');
     let ultimo = -1;
-    await atualizador.baixarInstalador(atualizacao.instalador, destino, (fracao) => {
+    const aoProgredir = (fracao) => {
         const pct = Math.floor(fracao * 100);
         if (pct !== ultimo) {
             ultimo = pct;
             event.sender.send('atualizacao-progresso', pct);
         }
-    });
+    };
+
+    if (app.isPackaged && !process.env.PORTABLE_EXECUTABLE_FILE) {
+        try {
+            await baixarAtualizacaoPequena(aoProgredir);
+            modoDaAtualizacao = 'pequena';
+            return true;
+        } catch (e) {
+            // ex.: release publicado sem o latest.yml — segue pelo caminho antigo
+            registrarAtualizacao('erro', `atualização pequena falhou, baixando o instalador inteiro: ${e.message}`);
+        }
+    }
+
+    if (!atualizacao.instalador) throw new Error('nenhuma atualização disponível');
+    const destino = path.join(app.getPath('temp'), `DJ-Flow-Setup-${atualizacao.version}.exe`);
+    await atualizador.baixarInstalador(atualizacao.instalador, destino, aoProgredir);
     instaladorBaixado = destino;
+    modoDaAtualizacao = 'completa';
     return true;
 });
 
@@ -417,6 +468,11 @@ ipcMain.handle('baixar-atualizacao', async (event) => {
 // aberto desvinculado deste processo, o app fecha logo em seguida, e o
 // instalador abre a versão nova quando termina.
 ipcMain.handle('instalar-atualizacao', () => {
+    if (modoDaAtualizacao === 'pequena') {
+        // mostra a janelinha do instalador e reabre o app na versão nova
+        setTimeout(() => autoUpdater.quitAndInstall(false, true), 500);
+        return true;
+    }
     if (!instaladorBaixado || !fs.existsSync(instaladorBaixado)) throw new Error('instalador não encontrado');
     const instalador = spawn(instaladorBaixado, [], { detached: true, stdio: 'ignore' });
     instalador.unref();

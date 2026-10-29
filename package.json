@@ -1,17 +1,18 @@
 {
   "name": "dj-flow-desktop",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "DJ Flow - app para DJs que usam Rekordbox: detector de qualidade real das músicas (320 kbps de verdade) e Cofre organizado.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
+    "build": "electron-builder --win --publish never",
     "dist": "npm run build"
   },
   "author": "Catarina Magalhães",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
+    "electron-updater": "6.8.10",
     "express": "^4.19.2",
     "youtube-dl-exec": "^3.0.2"
   },
@@ -25,6 +26,16 @@
     "asar": false,
     "directories": {
       "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "CatarinaMaga",
+        "repo": "dj-flow-desktop"
+      }
+    ],
+    "nsis": {
+      "artifactName": "DJ-Flow-Setup-${version}.${ext}"
     },
     "win": {
       "target": [

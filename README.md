@@ -89,5 +89,7 @@ npm start
 npm run build
 ```
 
+Ao publicar uma versão, suba no release os quatro arquivos de `dist/`: `DJ-Flow-Setup-<versão>.exe`, `DJ-Flow-Setup-<versão>.exe.blockmap`, `latest.yml` e `DJ Flow <versão>.exe` (portátil). O `latest.yml` e o `.blockmap` permitem que o app instalado baixe só o que mudou entre as versões.
+
 ---
 Palavras-chave: rekordbox, CDJ, pen drive, DJ, qualidade de música, 320 kbps, bitrate, espectro de frequências, organizar biblioteca musical, Pioneer DJ, AlphaTheta.
